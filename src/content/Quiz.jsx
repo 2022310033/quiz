@@ -39,7 +39,15 @@ function Quiz() {
 
     try {
       const snapshot = await getDocs(collection(db, 'quiz'))
-      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+      let items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+      
+      // Sort by createdAt (newest first)
+      items = items.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || 0
+        const timeB = b.createdAt?.toMillis?.() || 0
+        return timeB - timeA
+      })
+      
       setQuestions(items)
       setCount(snapshot.size)
       setStatus('success')

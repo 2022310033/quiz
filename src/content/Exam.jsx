@@ -30,7 +30,11 @@ function Exam() {
 
       try {
         const snapshot = await getDocs(collection(db, 'quiz'))
-        const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+        let items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+        
+        // Shuffle questions
+        items = items.sort(() => Math.random() - 0.5)
+        
         setQuestions(items)
         setStatus('success')
       } catch (err) {

@@ -1,7 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // Set up the worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 /**
  * Parse text content from PDF file
@@ -22,75 +23,62 @@ export async function extractTextFromPDF(file) {
 
 /**
  * Parse questions from text format
- * Expected format:
- * 1. Question text here?
- * A. Option A
- * B. Option B
- * C. Option C
- * D. Option D
- * Answer: B
- *
- * 2. Next question?
- * ...
  */
 export function parseQuestionsFromText(text) {
+  console.log('📄 Raw text input:', text)
+  
   const questions = []
-  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean)
+  
+  // Split by question numbers (1., 2., 3., etc)
+  // This handles both newline-separated and space-separated content
+  const questionBlocks = text.split(/(?=\d+\.)/).filter(Boolean)
+  
+  console.log(`📦 Found ${questionBlocks.length} question blocks`)
+  console.log('📦 Question blocks:', questionBlocks)
 
-  let currentQuestion = null
-  let i = 0
-
-  while (i < lines.length) {
-    const line = lines[i]
-
-    // Check if this line starts a new question (e.g., "1. Question text")
-    const questionMatch = line.match(/^(\d+)\.\s+(.+)/)
-    if (questionMatch) {
-      // Save previous question if exists
-      if (currentQuestion && isValidQuestion(currentQuestion)) {
-        questions.push(currentQuestion)
-      }
-
-      // Start new question
-      currentQuestion = {
-        question: questionMatch[2],
-        letterA: '',
-        letterB: '',
-        letterC: '',
-        letterD: '',
-        correctAnswer: 'A',
-      }
-      i++
+  for (const block of questionBlocks) {
+    console.log(`\n🔍 Processing block: "${block.substring(0, 100)}..."`)
+    
+    const question = {}
+    
+    // Extract question number and text
+    const qMatch = block.match(/^(\d+)\.\s*(.+?)(?=\s*[A-D]\.)/s)
+    if (!qMatch) {
+      console.log(`⚠️ Could not extract question`)
       continue
     }
+    question.question = qMatch[2].trim()
+    console.log(`✅ Question: "${question.question}"`)
 
-    // Check for answer options (A., B., C., D.)
-    if (currentQuestion) {
-      const optionMatch = line.match(/^([A-D])\.\s+(.+)/)
-      if (optionMatch) {
-        const letter = optionMatch[1].toLowerCase()
-        const option = optionMatch[2]
-        currentQuestion[`letter${letter.toUpperCase()}`] = option
-        i++
-        continue
-      }
+    // Extract options A, B, C, D
+    const aMatch = block.match(/A\.\s*(.+?)(?=\s*B\.)/s)
+    const bMatch = block.match(/B\.\s*(.+?)(?=\s*C\.)/s)
+    const cMatch = block.match(/C\.\s*(.+?)(?=\s*D\.)/s)
+    const dMatch = block.match(/D\.\s*(.+?)(?=\s*Answer|$)/s)
 
-      // Check for answer indicator (Answer: B)
-      const answerMatch = line.match(/^Answer\s*:\s*([A-D])/i)
-      if (answerMatch) {
-        currentQuestion.correctAnswer = answerMatch[1].toUpperCase()
-        i++
-        continue
-      }
+    question.letterA = aMatch ? aMatch[1].trim() : ''
+    question.letterB = bMatch ? bMatch[1].trim() : ''
+    question.letterC = cMatch ? cMatch[1].trim() : ''
+    question.letterD = dMatch ? dMatch[1].trim() : ''
+
+    console.log(`✅ Options: A="${question.letterA}", B="${question.letterB}", C="${question.letterC}", D="${question.letterD}"`)
+
+    // Extract answer
+    const answerMatch = block.match(/Answer\s*:\s*([A-D])/i)
+    question.correctAnswer = answerMatch ? answerMatch[1].toUpperCase() : 'A'
+    console.log(`✅ Answer: ${question.correctAnswer}`)
+
+    // Validate and add
+    if (question.question && question.letterA && question.letterB && question.letterC && question.letterD) {
+      questions.push(question)
+      console.log(`💾 Saved question`)
+    } else {
+      console.log(`❌ Incomplete question, skipping`)
     }
-
-    i++
   }
 
-  // Don't forget the last question
-  if (currentQuestion && isValidQuestion(currentQuestion)) {
-    questions.push(currentQuestion)
-  }
+  console.log(`\n📊 Total questions parsed: ${questions.length}`)
+  console.log('🎯 Final questions:', questions)
 
   return questions
 }
@@ -100,11 +88,11 @@ export function parseQuestionsFromText(text) {
  */
 function isValidQuestion(q) {
   return (
-    q.question?.trim() &&
-    q.letterA?.trim() &&
-    q.letterB?.trim() &&
-    q.letterC?.trim() &&
-    q.letterD?.trim() &&
-    ['A', 'B', 'C', 'D'].includes(q.correctAnswer)
+    q?.question?.trim() &&
+    q?.letterA?.trim() &&
+    q?.letterB?.trim() &&
+    q?.letterC?.trim() &&
+    q?.letterD?.trim() &&
+    ['A', 'B', 'C', 'D'].includes(q?.correctAnswer)
   )
 }
