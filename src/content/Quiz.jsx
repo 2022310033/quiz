@@ -9,6 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase/firebase'
+import { extractTextFromPDF, parseQuestionsFromText } from '../utils/questionParser'
 
 function Quiz() {
   const [status, setStatus] = useState('idle')
@@ -26,6 +27,11 @@ function Quiz() {
     letterD: '',
     correctAnswer: 'A',
   })
+
+  const [uploadStatus, setUploadStatus] = useState('idle')
+  const [uploadError, setUploadError] = useState('')
+  const [previewQuestions, setPreviewQuestions] = useState([])
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   const loadCount = async () => {
     setStatus('loading')
@@ -148,6 +154,78 @@ function Quiz() {
     }
   }
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploadStatus('loading')
+    setUploadError('')
+    setPreviewQuestions([])
+
+    try {
+      let text = ''
+
+      if (file.type === 'application/pdf') {
+        text = await extractTextFromPDF(file)
+      } else {
+        text = await file.text()
+      }
+
+      const parsed = parseQuestionsFromText(text)
+
+      if (parsed.length === 0) {
+        setUploadError('No valid questions found. Check the format.')
+        setUploadStatus('idle')
+        return
+      }
+
+      setPreviewQuestions(parsed)
+      setUploadStatus('preview')
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to parse file.')
+      setUploadStatus('idle')
+    }
+  }
+
+  const handleBulkUpload = async () => {
+    setUploadStatus('uploading')
+    setUploadError('')
+    setUploadProgress(0)
+
+    try {
+      for (let i = 0; i < previewQuestions.length; i++) {
+        const q = previewQuestions[i]
+        await addDoc(collection(db, 'quiz'), {
+          question: q.question.trim(),
+          letterA: q.letterA.trim(),
+          letterB: q.letterB.trim(),
+          letterC: q.letterC.trim(),
+          letterD: q.letterD.trim(),
+          correctAnswer: q.correctAnswer,
+          createdAt: serverTimestamp(),
+        })
+        setUploadProgress(((i + 1) / previewQuestions.length) * 100)
+      }
+
+      setUploadStatus('success')
+      setPreviewQuestions([])
+      await loadCount()
+
+      setTimeout(() => {
+        setUploadStatus('idle')
+      }, 2000)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload questions.')
+      setUploadStatus('idle')
+    }
+  }
+
+  const cancelUpload = () => {
+    setPreviewQuestions([])
+    setUploadStatus('idle')
+    setUploadError('')
+  }
+
   return (
     <section className="page panel">
       <h1>Quiz Manager</h1>
@@ -155,6 +233,84 @@ function Quiz() {
       {status === 'loading' && <p className="status-message">Checking Firestore connection...</p>}
       {status === 'success' && <p>Connected. Documents in quiz: {count}</p>}
       {status === 'error' && <p>Connection failed: {error}</p>}
+
+      {/* Upload Section */}
+      {uploadStatus === 'idle' && (
+        <div className="upload-section">
+          <h3 style={{ marginTop: '2rem' }}>Bulk Upload from PDF/Text</h3>
+          <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
+            Upload a PDF or TXT file with questions in this format:
+          </p>
+          <pre style={{ background: '#f1f5f9', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem', overflow: 'auto' }}>
+            {`1. Question text here?
+A. Option A
+B. Option B
+C. Option C
+D. Option D
+Answer: B`}
+          </pre>
+          <label className="file-input-label">
+            <input
+              type="file"
+              accept=".pdf,.txt"
+              onChange={handleFileUpload}
+              disabled={uploadStatus === 'loading'}
+              style={{ display: 'none' }}
+            />
+            <span className="btn btn-primary">Choose File</span>
+          </label>
+        </div>
+      )}
+
+      {/* Preview Section */}
+      {uploadStatus === 'preview' && previewQuestions.length > 0 && (
+        <div className="upload-preview">
+          <h3>Preview ({previewQuestions.length} questions)</h3>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+            {previewQuestions.map((q, idx) => (
+              <div key={idx} className="question-card" style={{ marginBottom: '0.75rem' }}>
+                <strong>{idx + 1}. {q.question}</strong>
+                <div className="option-text">A. {q.letterA}</div>
+                <div className="option-text">B. {q.letterB}</div>
+                <div className="option-text">C. {q.letterC}</div>
+                <div className="option-text">D. {q.letterD}</div>
+                <div className="correct-answer">Answer: {q.correctAnswer}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button type="button" className="btn btn-primary" onClick={handleBulkUpload}>
+              Upload All
+            </button>
+            <button type="button" className="btn" onClick={cancelUpload}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Progress */}
+      {uploadStatus === 'uploading' && (
+        <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+          <p>Uploading: {Math.round(uploadProgress)}%</p>
+          <div style={{ background: '#e2e8f0', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+            <div
+              style={{
+                background: '#2563eb',
+                height: '100%',
+                width: `${uploadProgress}%`,
+                transition: 'width 0.3s',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {uploadStatus === 'success' && (
+        <p className="success-message">Successfully uploaded {previewQuestions.length} questions!</p>
+      )}
+
+      {uploadError && <p className="error-message">{uploadError}</p>}
 
       <form onSubmit={handleSubmit} className="form-grid">
         <input
