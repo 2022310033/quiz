@@ -4,13 +4,6 @@ on:
   push:
     branches: [main]
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
-env:
-  PAGES_ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
-
 permissions:
   contents: write
   pages: write
@@ -33,7 +26,6 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          name: ${{ env.PAGES_ARTIFACT_NAME }}
           path: ./dist
 
   deploy:
@@ -45,5 +37,3 @@ jobs:
     steps:
       - uses: actions/deploy-pages@v4
         id: deployment
-        with:
-          artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}
