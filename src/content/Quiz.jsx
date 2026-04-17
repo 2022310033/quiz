@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  serverTimestamp,
-  updateDoc,
-} from 'firebase/firestore'
-import { db } from '../firebase/firebase'
 import { extractTextFromPDF, parseQuestionsFromText } from '../utils/questionParser'
+import {
+  getAllSets,
+  getQuestionsBySet,
+  addQuestionToSet,
+  updateQuestion,
+  deleteQuestion,
+  updateSetQuestionCount,
+} from '../utils/setManager'
 
 function Quiz() {
   const [status, setStatus] = useState('idle')
@@ -28,38 +26,58 @@ function Quiz() {
     correctAnswer: 'A',
   })
 
+  // Sets management
+  const [sets, setSets] = useState([])
+  const [selectedSetId, setSelectedSetId] = useState(null)
+  const [setsLoading, setSetsLoading] = useState(true)
+
   const [uploadStatus, setUploadStatus] = useState('idle')
   const [uploadError, setUploadError] = useState('')
   const [previewQuestions, setPreviewQuestions] = useState([])
   const [uploadProgress, setUploadProgress] = useState(0)
 
-  const loadCount = async () => {
+  const loadSets = async () => {
+    setSetsLoading(true)
+    setError('')
+    try {
+      const data = await getAllSets()
+      setSets(data)
+      if (data.length > 0) {
+        setSelectedSetId(data[0].id)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load sets')
+    } finally {
+      setSetsLoading(false)
+    }
+  }
+
+  const loadQuestions = async (setId) => {
+    if (!setId) return
+    
     setStatus('loading')
     setError('')
 
     try {
-      const snapshot = await getDocs(collection(db, 'quiz'))
-      let items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-      
-      // Sort by createdAt (newest first)
-      items = items.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis?.() || 0
-        const timeB = b.createdAt?.toMillis?.() || 0
-        return timeB - timeA
-      })
-      
-      setQuestions(items)
-      setCount(snapshot.size)
+      const questions = await getQuestionsBySet(setId)
+      setQuestions(questions)
+      setCount(questions.length)
       setStatus('success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect to Firestore')
+      setError(err instanceof Error ? err.message : 'Failed to load questions')
       setStatus('error')
     }
   }
 
   useEffect(() => {
-    loadCount()
+    loadSets()
   }, [])
+
+  useEffect(() => {
+    if (selectedSetId) {
+      loadQuestions(selectedSetId)
+    }
+  }, [selectedSetId])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -70,6 +88,12 @@ function Quiz() {
     event.preventDefault()
     setFormError('')
     setSaveStatus('loading')
+
+    if (!selectedSetId) {
+      setSaveStatus('error')
+      setFormError('Please select a question set first.')
+      return
+    }
 
     const isValid =
       form.question.trim() &&
@@ -86,8 +110,7 @@ function Quiz() {
 
     try {
       if (editingId) {
-        const ref = doc(db, 'quiz', editingId)
-        await updateDoc(ref, {
+        await updateQuestion(editingId, {
           question: form.question.trim(),
           letterA: form.letterA.trim(),
           letterB: form.letterB.trim(),
@@ -96,14 +119,13 @@ function Quiz() {
           correctAnswer: form.correctAnswer,
         })
       } else {
-        await addDoc(collection(db, 'quiz'), {
+        await addQuestionToSet(selectedSetId, {
           question: form.question.trim(),
           letterA: form.letterA.trim(),
           letterB: form.letterB.trim(),
           letterC: form.letterC.trim(),
           letterD: form.letterD.trim(),
           correctAnswer: form.correctAnswer,
-          createdAt: serverTimestamp(),
         })
       }
 
@@ -117,7 +139,7 @@ function Quiz() {
         correctAnswer: 'A',
       })
       setEditingId(null)
-      await loadCount()
+      await loadQuestions(selectedSetId)
     } catch (err) {
       setSaveStatus('error')
       setFormError(err instanceof Error ? err.message : 'Failed to save question.')
@@ -154,9 +176,8 @@ function Quiz() {
     if (!confirmDelete) return
 
     try {
-      const ref = doc(db, 'quiz', id)
-      await deleteDoc(ref)
-      await loadCount()
+      await deleteQuestion(id, selectedSetId)
+      await loadQuestions(selectedSetId)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete question.')
     }
@@ -196,6 +217,11 @@ function Quiz() {
   }
 
   const handleBulkUpload = async () => {
+    if (!selectedSetId) {
+      setUploadError('Please select a question set first.')
+      return
+    }
+
     setUploadStatus('uploading')
     setUploadError('')
     setUploadProgress(0)
@@ -203,21 +229,20 @@ function Quiz() {
     try {
       for (let i = 0; i < previewQuestions.length; i++) {
         const q = previewQuestions[i]
-        await addDoc(collection(db, 'quiz'), {
+        await addQuestionToSet(selectedSetId, {
           question: q.question.trim(),
           letterA: q.letterA.trim(),
           letterB: q.letterB.trim(),
           letterC: q.letterC.trim(),
           letterD: q.letterD.trim(),
           correctAnswer: q.correctAnswer,
-          createdAt: serverTimestamp(),
         })
         setUploadProgress(((i + 1) / previewQuestions.length) * 100)
       }
 
       setUploadStatus('success')
       setPreviewQuestions([])
-      await loadCount()
+      await loadQuestions(selectedSetId)
 
       setTimeout(() => {
         setUploadStatus('idle')
@@ -238,12 +263,50 @@ function Quiz() {
     <section className="page panel">
       <h1>Quiz Manager</h1>
       <p className="section-subtitle">Add, edit, or delete questions</p>
-      {status === 'loading' && <p className="status-message">Checking Firestore connection...</p>}
-      {status === 'success' && <p>Connected. Documents in quiz: {count}</p>}
-      {status === 'error' && <p>Connection failed: {error}</p>}
+
+      {/* Set Selector */}
+      {setsLoading && <p className="status-message">Loading question sets...</p>}
+      
+      {!setsLoading && sets.length === 0 && (
+        <div className="error-message" style={{ marginBottom: '1.5rem' }}>
+          <p>No question sets found. <a href="/" style={{ color: '#2563eb', textDecoration: 'underline' }}>Create one first</a></p>
+        </div>
+      )}
+
+      {!setsLoading && sets.length > 0 && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
+          <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+            Select Question Set
+          </label>
+          <select
+            id="setSelector"
+            value={selectedSetId || ''}
+            onChange={(e) => setSelectedSetId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+            }}
+          >
+            <option value="">-- Select a set --</option>
+            {sets.map((set) => (
+              <option key={set.id} value={set.id}>
+                {set.name} ({set.questionCount || 0} questions)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {status === 'loading' && <p className="status-message">Loading questions...</p>}
+      {status === 'error' && <p className="error-message">{error}</p>}
+      {status === 'success' && selectedSetId && <p style={{ color: '#0ea5e9' }}>Loaded {count} questions</p>}
 
       {/* Upload Section */}
-      {uploadStatus === 'idle' && (
+      {uploadStatus === 'idle' && selectedSetId && (
         <div className="upload-section">
           <h3 style={{ marginTop: '2rem' }}>Bulk Upload from PDF/Text</h3>
           <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
@@ -320,7 +383,8 @@ Answer: B`}
 
       {uploadError && <p className="error-message">{uploadError}</p>}
 
-      <form onSubmit={handleSubmit} className="form-grid">
+      {selectedSetId && (
+        <form onSubmit={handleSubmit} className="form-grid">
         <input
           className="input"
           name="question"
@@ -380,8 +444,9 @@ Answer: B`}
         {saveStatus === 'success' && <p className="success-message">Question saved to Firestore.</p>}
         {formError && <p className="error-message">Save failed: {formError}</p>}
       </form>
+      )}
 
-      {questions.length > 0 && (
+      {questions.length > 0 && selectedSetId && (
         <div className="questions-section">
           <h2>Questions</h2>
           <ul className="questions-list">

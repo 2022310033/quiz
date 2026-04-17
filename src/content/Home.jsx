@@ -1,10 +1,12 @@
 
+import QuestionSetManager from '../components/QuestionSetManager'
 
 function Home() {
   return (
-    <section className="page">
-      <h1>Questions</h1>
-      <p>Set your questions here.</p>
+    <section className="page panel">
+      <h1>Question Sets</h1>
+      <p className="section-subtitle">Create and manage question sets</p>
+      <QuestionSetManager />
     </section>
   )
 }

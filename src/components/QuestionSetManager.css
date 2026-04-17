@@ -1,0 +1,218 @@
+.qsm-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.qsm-create-button {
+  margin-bottom: 1.5rem;
+}
+
+/* Form Styles */
+.qsm-form-container {
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+.qsm-form-container p {
+  color: #fcf9f9;
+}
+
+.qsm-form-header {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  padding: 1.5rem;
+  color: white;
+}
+
+.qsm-form-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.qsm-form-header p {
+  margin: 0.5rem 0 0 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+}
+
+.qsm-form-body {
+  padding: 1.5rem;
+}
+
+.qsm-form-group {
+  margin-bottom: 1.25rem;
+}
+
+.qsm-form-group:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+.qsm-label {
+  display: block;
+  margin-bottom: 0.65rem;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.qsm-label-required {
+  color: #ef4444;
+}
+
+.qsm-label-optional {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.qsm-input,
+.qsm-textarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: #f8fafc;
+  box-sizing: border-box;
+}
+
+.qsm-input:focus,
+.qsm-textarea:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.qsm-textarea {
+  resize: vertical;
+}
+
+.qsm-error-message {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  border-left: 4px solid #dc2626;
+}
+
+.qsm-button-group {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.qsm-button-cancel {
+  padding: 0.75rem 1.25rem;
+  border: 1.5px solid #e2e8f0;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #475569;
+  transition: all 0.2s ease;
+}
+
+.qsm-button-cancel:hover {
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.qsm-button-submit {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.qsm-button-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+}
+
+.qsm-button-submit:active {
+  transform: translateY(0);
+}
+
+/* Sets List */
+.qsm-empty-state {
+  text-align: center;
+  color: #64748b;
+  padding: 2rem;
+}
+
+.qsm-sets-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.qsm-set-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+.qsm-set-info {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.qsm-set-name {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.qsm-set-description {
+  margin: 0.5rem 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.qsm-set-count {
+  margin: 0.75rem 0 0 0;
+  color: #0ea5e9;
+  font-weight: 500;
+  text-align: left;
+}
+
+.qsm-set-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.qsm-button-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.qsm-button-delete {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.qsm-button-delete:hover {
+  background-color: #fecaca;
+}

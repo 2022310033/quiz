@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
-import { db } from '../firebase/firebase'
+import { getAllSets, getQuestionsBySet } from '../utils/setManager'
 
 function Exam() {
   const [questions, setQuestions] = useState([])
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
+
+  // Sets management
+  const [sets, setSets] = useState([])
+  const [selectedSetId, setSelectedSetId] = useState(null)
+  const [setsLoading, setSetsLoading] = useState(true)
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selected, setSelected] = useState('')
@@ -24,18 +28,38 @@ function Exam() {
   )
 
   useEffect(() => {
+    const loadSets = async () => {
+      setSetsLoading(true)
+      try {
+        const data = await getAllSets()
+        setSets(data)
+        if (data.length > 0) {
+          setSelectedSetId(data[0].id)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load sets')
+      } finally {
+        setSetsLoading(false)
+      }
+    }
+
+    loadSets()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedSetId) return
+
     const loadQuestions = async () => {
       setStatus('loading')
       setError('')
 
       try {
-        const snapshot = await getDocs(collection(db, 'quiz'))
-        let items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+        const items = await getQuestionsBySet(selectedSetId)
         
         // Shuffle questions
-        items = items.sort(() => Math.random() - 0.5)
+        const shuffled = items.sort(() => Math.random() - 0.5)
         
-        setQuestions(items)
+        setQuestions(shuffled)
         setStatus('success')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load questions.')
@@ -44,7 +68,7 @@ function Exam() {
     }
 
     loadQuestions()
-  }, [])
+  }, [selectedSetId])
 
   useEffect(() => {
     if (!running || secondsLeft <= 0) return
@@ -118,14 +142,55 @@ function Exam() {
     <section className="page panel">
       <h1>Exam</h1>
 
+      {/* Set Selector */}
+      {setsLoading && <p className="status-message">Loading question sets...</p>}
+      
+      {!setsLoading && sets.length === 0 && (
+        <div className="error-message" style={{ marginBottom: '1.5rem' }}>
+          <p>No question sets found. <a href="/quiz" style={{ color: '#2563eb', textDecoration: 'underline' }}>Create one first</a></p>
+        </div>
+      )}
+
+      {!setsLoading && sets.length > 0 && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
+          <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+            Select Question Set
+          </label>
+          <select
+            id="setSelector"
+            value={selectedSetId || ''}
+            onChange={(e) => {
+              setSelectedSetId(e.target.value)
+              setHasStarted(false)
+              setCompleted(false)
+            }}
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+            }}
+          >
+            <option value="">-- Select a set --</option>
+            {sets.map((set) => (
+              <option key={set.id} value={set.id}>
+                {set.name} ({set.questionCount || 0} questions)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {status === 'loading' && <p>Loading questions...</p>}
       {status === 'error' && <p>Failed to load: {error}</p>}
 
       {status === 'success' && questions.length === 0 && (
-        <p>No questions yet. Add some in the Quiz page.</p>
+        <p>No questions in this set. Add some in the Quiz page.</p>
       )}
 
-      {status === 'success' && questions.length > 0 && !hasStarted && (
+      {status === 'success' && questions.length > 0 && !hasStarted && selectedSetId && (
         <div className="exam-setup">
           <label className="form-label">
             Seconds per question:
