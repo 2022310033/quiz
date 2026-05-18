@@ -50,6 +50,45 @@ export async function createSet(name, description = '') {
 }
 
 /**
+ * Find a question set by exact name
+ */
+export async function getSetByName(name) {
+  try {
+    const snapshot = await getDocs(
+      query(collection(db, 'questionSets'), where('name', '==', name))
+    )
+
+    if (snapshot.empty) {
+      return null
+    }
+
+    const docSnap = snapshot.docs[0]
+    return { id: docSnap.id, ...docSnap.data() }
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to fetch set by name')
+  }
+}
+
+/**
+ * Find saved retake questions by original question ID
+ */
+export async function getQuestionsByOriginalQuestionId(setId, originalQuestionId) {
+  try {
+    const snapshot = await getDocs(
+      query(
+        collection(db, 'questions'),
+        where('setId', '==', setId),
+        where('originalQuestionId', '==', originalQuestionId)
+      )
+    )
+
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to fetch question by original ID')
+  }
+}
+
+/**
  * Update a question set
  */
 export async function updateSet(setId, name, description) {
@@ -115,7 +154,7 @@ export async function getQuestionsBySet(setId) {
  */
 export async function addQuestionToSet(setId, questionData) {
   try {
-    const docRef = await addDoc(collection(db, 'questions'), {
+    const payload = {
       setId,
       question: questionData.question,
       letterA: questionData.letterA,
@@ -124,11 +163,21 @@ export async function addQuestionToSet(setId, questionData) {
       letterD: questionData.letterD,
       correctAnswer: questionData.correctAnswer,
       createdAt: serverTimestamp(),
-    })
-    
+    }
+
+    if (questionData.originalQuestionId) {
+      payload.originalQuestionId = questionData.originalQuestionId
+    }
+
+    if (questionData.sourceSetId) {
+      payload.sourceSetId = questionData.sourceSetId
+    }
+
+    const docRef = await addDoc(collection(db, 'questions'), payload)
+
     // Update question count on the set
     await updateSetQuestionCount(setId)
-    
+
     return docRef.id
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to add question')

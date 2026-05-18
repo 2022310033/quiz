@@ -326,11 +326,24 @@ function Quiz() {
             }}
           >
             <option value="">-- Select a set --</option>
-            {sets.map((set) => (
-              <option key={set.id} value={set.id}>
-                {set.name} ({set.questionCount || 0} questions)
-              </option>
-            ))}
+            <optgroup label="Sets">
+              {sets
+                .filter((set) => !set.name.endsWith(' - Retake'))
+                .map((set) => (
+                  <option key={set.id} value={set.id}>
+                    {set.name} ({set.questionCount || 0} questions)
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label="Retake Sets">
+              {sets
+                .filter((set) => set.name.endsWith(' - Retake'))
+                .map((set) => (
+                  <option key={set.id} value={set.id}>
+                    {set.name} ({set.questionCount || 0} questions)
+                  </option>
+                ))}
+            </optgroup>
           </select>
         </div>
       )}

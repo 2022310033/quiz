@@ -9,6 +9,7 @@ function QuestionSetManager() {
   const [formError, setFormError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [activeTab, setActiveTab] = useState('sets')
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -74,6 +75,10 @@ function QuestionSetManager() {
     setShowForm(true)
   }
 
+  const normalSets = sets.filter((set) => !set.name.endsWith(' - Retake'))
+  const retakeSets = sets.filter((set) => set.name.endsWith(' - Retake'))
+  const activeSets = activeTab === 'retakes' ? retakeSets : normalSets
+
   const cancelEdit = () => {
     setEditingId(null)
     setForm({ name: '', description: '' })
@@ -103,8 +108,24 @@ function QuestionSetManager() {
       {status === 'loading' && <p className="status-message">Loading...</p>}
       {status === 'error' && <p className="error-message">Error: {error}</p>}
 
-      {/* Create Button */}
-      {!showForm && (
+      <div className="qsm-tab-list">
+        <button
+          type="button"
+          className={`qsm-tab ${activeTab === 'sets' ? 'active' : ''}`}
+          onClick={() => setActiveTab('sets')}
+        >
+          Sets ({normalSets.length})
+        </button>
+        <button
+          type="button"
+          className={`qsm-tab ${activeTab === 'retakes' ? 'active' : ''}`}
+          onClick={() => setActiveTab('retakes')}
+        >
+          Retake Sets ({retakeSets.length})
+        </button>
+      </div>
+
+      {!showForm && activeTab === 'sets' && (
         <button className="btn btn-primary qsm-create-button" onClick={() => setShowForm(true)}>
           + Create New Set
         </button>
@@ -183,13 +204,15 @@ function QuestionSetManager() {
       {/* Sets List */}
       {!showForm && (
         <div>
-          {sets.length === 0 ? (
+          {activeSets.length === 0 ? (
             <p className="qsm-empty-state">
-              No question sets yet. Create one to get started!
+              {activeTab === 'sets'
+                ? 'No question sets yet. Create one to get started!'
+                : 'No retake sets yet. Missed questions will appear here automatically.'}
             </p>
           ) : (
             <div className="qsm-sets-grid">
-              {sets.map((set) => (
+              {activeSets.map((set) => (
                 <div key={set.id} className="question-card">
                   <div className="qsm-set-card">
                     <div className="qsm-set-info">
@@ -204,12 +227,14 @@ function QuestionSetManager() {
                       </p>
                     </div>
                     <div className="qsm-set-actions">
-                      <button
-                        className="btn qsm-button-small"
-                        onClick={() => startEdit(set)}
-                      >
-                        Edit
-                      </button>
+                      {activeTab === 'sets' && (
+                        <button
+                          className="btn qsm-button-small"
+                          onClick={() => startEdit(set)}
+                        >
+                          Edit
+                        </button>
+                      )}
                       <button
                         className="btn qsm-button-small qsm-button-delete"
                         onClick={() => handleDelete(set.id)}
