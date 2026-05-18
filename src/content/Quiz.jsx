@@ -35,6 +35,9 @@ function Quiz() {
   const [uploadError, setUploadError] = useState('')
   const [previewQuestions, setPreviewQuestions] = useState([])
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [manualModalOpen, setManualModalOpen] = useState(false)
+  const [questionInputMode, setQuestionInputMode] = useState('manual')
 
   const loadSets = async () => {
     setSetsLoading(true)
@@ -156,7 +159,9 @@ function Quiz() {
       letterD: question.letterD ?? '',
       correctAnswer: question.correctAnswer ?? 'A',
     })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setQuestionInputMode('manual')
+    setManualModalOpen(true)
+    setUploadModalOpen(false)
   }
 
   const cancelEdit = () => {
@@ -259,6 +264,35 @@ function Quiz() {
     setUploadError('')
   }
 
+  const selectQuestionMode = (mode) => {
+    setQuestionInputMode(mode)
+
+    if (mode === 'pdf') {
+      setUploadModalOpen(true)
+      setManualModalOpen(false)
+    } else {
+      setManualModalOpen(true)
+      setUploadModalOpen(false)
+      setUploadStatus('idle')
+      setPreviewQuestions([])
+      setUploadError('')
+    }
+  }
+
+  const closeUploadModal = () => {
+    if (uploadStatus === 'uploading') return
+    setUploadModalOpen(false)
+    setQuestionInputMode('manual')
+    setUploadStatus('idle')
+    setPreviewQuestions([])
+    setUploadError('')
+  }
+
+  const closeManualModal = () => {
+    setManualModalOpen(false)
+    setQuestionInputMode('manual')
+  }
+
   return (
     <section className="page panel">
       <h1>Quiz Manager</h1>
@@ -305,31 +339,205 @@ function Quiz() {
       {status === 'error' && <p className="error-message">{error}</p>}
       {status === 'success' && selectedSetId && <p style={{ color: '#0ea5e9' }}>Loaded {count} questions</p>}
 
-      {/* Upload Section */}
-      {uploadStatus === 'idle' && selectedSetId && (
-        <div className="upload-section">
-          <h3 style={{ marginTop: '2rem' }}>Bulk Upload from PDF/Text</h3>
-          <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
-            Upload a PDF or TXT file with questions in this format:
-          </p>
-          <pre style={{ background: '#f1f5f9', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem', overflow: 'auto' }}>
-            {`1. Question text here?
+      {selectedSetId && (
+        <div className="insert-questions-row">
+          <span className="section-label">Insert Questions</span>
+          <div className="insert-options">
+            <button
+              type="button"
+              className={`btn ${questionInputMode === 'manual' ? 'btn-primary' : ''}`}
+              onClick={() => selectQuestionMode('manual')}
+            >
+              Manual
+            </button>
+            <button
+              type="button"
+              className={`btn ${questionInputMode === 'pdf' ? 'btn-primary' : ''}`}
+              onClick={() => selectQuestionMode('pdf')}
+            >
+              PDF/TXT
+            </button>
+          </div>
+        </div>
+      )}
+
+      {uploadModalOpen && (
+        <div className="modal-backdrop" onClick={closeUploadModal}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <button type="button" className="close-button" onClick={closeUploadModal} aria-label="Close modal">
+                ×
+              </button>
+            </div>
+            <div className="modal-title-block">
+              <h3>Import questions from PDF/Text</h3>
+              <p>Upload a PDF or TXT file with questions in this format.</p>
+            </div>
+
+            <pre style={{ background: '#f1f5f9', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem', overflow: 'auto' }}>
+              {`1. Question text here?
 A. Option A
 B. Option B
 C. Option C
 D. Option D
 Answer: B`}
-          </pre>
-          <label className="file-input-label">
-            <input
-              type="file"
-              accept=".pdf,.txt"
-              onChange={handleFileUpload}
-              disabled={uploadStatus === 'loading'}
-              style={{ display: 'none' }}
-            />
-            <span className="btn btn-primary">Choose File</span>
-          </label>
+            </pre>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+              <label className="file-input-label" style={{ display: 'inline-block' }}>
+                <input
+                  type="file"
+                  accept=".pdf,.txt"
+                  onChange={handleFileUpload}
+                  disabled={uploadStatus === 'loading' || uploadStatus === 'uploading'}
+                  style={{ display: 'none' }}
+                />
+                <span className="btn btn-primary">Choose File</span>
+              </label>
+            </div>
+
+            {uploadStatus === 'loading' && <p style={{ marginTop: '1rem' }}>Parsing file...</p>}
+
+            {uploadStatus === 'preview' && previewQuestions.length > 0 && (
+              <div className="upload-preview" style={{ marginTop: '1.5rem' }}>
+                <h3>Preview ({previewQuestions.length} questions)</h3>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+                  {previewQuestions.map((q, idx) => (
+                    <div key={idx} className="question-card" style={{ marginBottom: '0.75rem' }}>
+                      <strong>{idx + 1}. {q.question}</strong>
+                      <div className="option-text">A. {q.letterA}</div>
+                      <div className="option-text">B. {q.letterB}</div>
+                      <div className="option-text">C. {q.letterC}</div>
+                      <div className="option-text">D. {q.letterD}</div>
+                      <div className="correct-answer">Answer: {q.correctAnswer}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                  <button type="button" className="btn btn-primary" onClick={handleBulkUpload}>
+                    Upload All
+                  </button>
+                  <button type="button" className="btn" onClick={cancelUpload}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {uploadStatus === 'uploading' && (
+              <div style={{ textAlign: 'center', margin: '1.5rem 0' }}>
+                <p>Uploading: {Math.round(uploadProgress)}%</p>
+                <div style={{ background: '#e2e8f0', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      background: '#2563eb',
+                      height: '100%',
+                      width: `${uploadProgress}%`,
+                      transition: 'width 0.3s',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {uploadStatus === 'success' && (
+              <p className="success-message" style={{ marginTop: '1rem' }}>
+                Successfully uploaded {previewQuestions.length} questions!
+              </p>
+            )}
+
+            {uploadError && <p className="error-message" style={{ marginTop: '1rem' }}>{uploadError}</p>}
+
+            <div className="modal-actions">
+              <button type="button" className="btn" onClick={closeUploadModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manualModalOpen && (
+        <div className="modal-backdrop" onClick={closeManualModal}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <button type="button" className="close-button" onClick={closeManualModal} aria-label="Close modal">
+                ×
+              </button>
+            </div>
+            <div className="modal-title-block">
+              <h3>{editingId ? 'Edit Question' : 'Add Question Manually'}</h3>
+              <p>Add a question directly using the manual form.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="form-grid" style={{ marginTop: '1rem' }}>
+              <input
+                className="input"
+                name="question"
+                value={form.question}
+                onChange={handleChange}
+                placeholder="Question"
+              />
+              <input
+                className="input"
+                name="letterA"
+                value={form.letterA}
+                onChange={handleChange}
+                placeholder="Letter A"
+              />
+              <input
+                className="input"
+                name="letterB"
+                value={form.letterB}
+                onChange={handleChange}
+                placeholder="Letter B"
+              />
+              <input
+                className="input"
+                name="letterC"
+                value={form.letterC}
+                onChange={handleChange}
+                placeholder="Letter C"
+              />
+              <input
+                className="input"
+                name="letterD"
+                value={form.letterD}
+                onChange={handleChange}
+                placeholder="Letter D"
+              />
+
+              <label className="form-label">
+                Correct Answer
+                <select className="input" name="correctAnswer" value={form.correctAnswer} onChange={handleChange}>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                </select>
+              </label>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center', marginTop: '1rem' }}>
+                <button type="submit" className="btn btn-primary" disabled={saveStatus === 'loading'}>
+                  {saveStatus === 'loading' ? 'Saving...' : editingId ? 'Update Question' : 'Save Question'}
+                </button>
+                {editingId && (
+                  <button type="button" className="btn" onClick={cancelEdit}>
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
+
+              {saveStatus === 'success' && <p className="success-message">Question saved to Firestore.</p>}
+              {formError && <p className="error-message">Save failed: {formError}</p>}
+            </form>
+
+            <div className="modal-actions" style={{ marginTop: '1rem' }}>
+              <button type="button" className="btn" onClick={closeManualModal}>
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -382,69 +590,6 @@ Answer: B`}
       )}
 
       {uploadError && <p className="error-message">{uploadError}</p>}
-
-      {selectedSetId && (
-        <form onSubmit={handleSubmit} className="form-grid">
-        <input
-          className="input"
-          name="question"
-          value={form.question}
-          onChange={handleChange}
-          placeholder="Question"
-        />
-        <input
-          className="input"
-          name="letterA"
-          value={form.letterA}
-          onChange={handleChange}
-          placeholder="Letter A"
-        />
-        <input
-          className="input"
-          name="letterB"
-          value={form.letterB}
-          onChange={handleChange}
-          placeholder="Letter B"
-        />
-        <input
-          className="input"
-          name="letterC"
-          value={form.letterC}
-          onChange={handleChange}
-          placeholder="Letter C"
-        />
-        <input
-          className="input"
-          name="letterD"
-          value={form.letterD}
-          onChange={handleChange}
-          placeholder="Letter D"
-        />
-
-        <label className="form-label">
-          Correct Answer
-          <select className="input" name="correctAnswer" value={form.correctAnswer} onChange={handleChange}>
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-            <option value="D">D</option>
-          </select>
-        </label>
-
-        <button type="submit" className="btn btn-primary" disabled={saveStatus === 'loading'}>
-          {saveStatus === 'loading' ? 'Saving...' : editingId ? 'Update Question' : 'Save Question'}
-        </button>
-
-        {editingId && (
-          <button type="button" className="btn" onClick={cancelEdit}>
-            Cancel Edit
-          </button>
-        )}
-
-        {saveStatus === 'success' && <p className="success-message">Question saved to Firestore.</p>}
-        {formError && <p className="error-message">Save failed: {formError}</p>}
-      </form>
-      )}
 
       {questions.length > 0 && selectedSetId && (
         <div className="questions-section">

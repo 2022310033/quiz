@@ -201,6 +201,18 @@
   background: #dbeafe;
 }
 
+.btn-option-correct {
+  border-color: #22c55e;
+  background: #ecfccb;
+  color: #166534;
+}
+
+.btn-option-incorrect {
+  border-color: #dc2626;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* Action rows */
 .action-row {
   display: flex;
@@ -285,11 +297,20 @@
 .feedback-message {
   margin-top: 1rem;
   padding: 1rem;
-  background: #fef3c7;
   border-radius: 6px;
-  border-left: 4px solid #f59e0b;
-  color: #92400e;
   font-weight: 500;
+}
+
+.feedback-success {
+  background: #ecfccb;
+  border-left: 4px solid #22c55e;
+  color: #166534;
+}
+
+.feedback-error {
+  background: #fee2e2;
+  border-left: 4px solid #dc2626;
+  color: #991b1b;
 }
 
 /* Exam specific */
@@ -333,6 +354,30 @@
   margin-top: 0.5rem;
 }
 
+.insert-questions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.insert-questions-row .section-label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.insert-options {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .upload-preview {
   background: #fef9e7;
   border: 1px solid #fbbf24;
@@ -344,6 +389,65 @@
 .upload-preview h3 {
   color: #92400e;
   margin-top: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: min(100%, 720px);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.modal-title-block {
+  margin-bottom: 1rem;
+}
+
+.modal-title-block h3 {
+  margin: 0;
+}
+
+.modal-title-block p {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.close-button {
+  border: none;
+  background: transparent;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #475569;
+  padding: 0.25rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .exam-card {

@@ -14,6 +14,7 @@ function Exam() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selected, setSelected] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('')
   const [score, setScore] = useState(0)
   const [completed, setCompleted] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
@@ -96,6 +97,7 @@ function Exam() {
     setCompleted(false)
     setSelected('')
     setFeedback('')
+    setFeedbackType('')
     setSecondsLeft(timePerQuestion)
     setRunning(true)
   }
@@ -110,6 +112,7 @@ function Exam() {
       setCurrentIndex(nextIndex)
       setSelected('')
       setFeedback('')
+      setFeedbackType('')
       setSecondsLeft(timePerQuestion)
       setRunning(true)
     }
@@ -122,6 +125,7 @@ function Exam() {
 
     if (!answer) {
       setFeedback(`Time's up! Correct answer: ${currentQuestion.correctAnswer}`)
+      setFeedbackType('error')
       setTimeout(nextQuestion, 1500)
       return
     }
@@ -131,8 +135,10 @@ function Exam() {
     if (answer === currentQuestion.correctAnswer) {
       setScore((s) => s + 1)
       setFeedback('Correct!')
+      setFeedbackType('success')
     } else {
       setFeedback(`Wrong. Correct answer: ${currentQuestion.correctAnswer}`)
+      setFeedbackType('error')
     }
 
     setTimeout(nextQuestion, 1500)
@@ -218,49 +224,39 @@ function Exam() {
 
           <h2>{currentQuestion.question}</h2>
           <ul className="option-list">
-            <li>
-              <button
-                type="button"
-                className="btn btn-option"
-                onClick={() => handleAnswer('A')}
-                disabled={!running}
-              >
-                A. {currentQuestion.letterA}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="btn btn-option"
-                onClick={() => handleAnswer('B')}
-                disabled={!running}
-              >
-                B. {currentQuestion.letterB}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="btn btn-option"
-                onClick={() => handleAnswer('C')}
-                disabled={!running}
-              >
-                C. {currentQuestion.letterC}
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="btn btn-option"
-                onClick={() => handleAnswer('D')}
-                disabled={!running}
-              >
-                D. {currentQuestion.letterD}
-              </button>
-            </li>
+            {['A', 'B', 'C', 'D'].map((letter) => {
+              const optionText = currentQuestion[`letter${letter}`]
+              const answered = !running && feedback !== '' && (selected !== '' || feedback.startsWith("Time"))
+              const isCorrect = letter === currentQuestion.correctAnswer
+              const isSelected = selected === letter
+              const statusClass = answered
+                ? isCorrect
+                  ? 'btn-option-correct'
+                  : isSelected
+                    ? 'btn-option-incorrect'
+                    : ''
+                : ''
+
+              return (
+                <li key={letter}>
+                  <button
+                    type="button"
+                    className={`btn btn-option ${statusClass}`}
+                    onClick={() => handleAnswer(letter)}
+                    disabled={!running}
+                  >
+                    {letter}. {optionText}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
 
-          {feedback && <p className="feedback-message">{feedback}</p>}
+          {feedback && (
+            <p className={`feedback-message ${feedbackType === 'success' ? 'feedback-success' : feedbackType === 'error' ? 'feedback-error' : ''}`}>
+              {feedback}
+            </p>
+          )}
         </div>
       )}
 
