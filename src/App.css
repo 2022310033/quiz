@@ -106,8 +106,16 @@
   border-radius: 6px;
   font-family: inherit;
   font-size: 0.95rem;
+  font-weight: 400;
+  color: #334155;
   transition: all 0.2s ease;
   box-sizing: border-box;
+}
+
+select.input {
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 400;
 }
 
 .input:focus {

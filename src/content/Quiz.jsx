@@ -8,6 +8,7 @@ import {
   deleteQuestion,
   updateSetQuestionCount,
 } from '../utils/setManager'
+import '../components/QuestionSetManager.css'
 
 function Quiz() {
   const [status, setStatus] = useState('idle')
@@ -30,6 +31,7 @@ function Quiz() {
   const [sets, setSets] = useState([])
   const [selectedSetId, setSelectedSetId] = useState(null)
   const [setsLoading, setSetsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('sets')
 
   const [uploadStatus, setUploadStatus] = useState('idle')
   const [uploadError, setUploadError] = useState('')
@@ -45,9 +47,6 @@ function Quiz() {
     try {
       const data = await getAllSets()
       setSets(data)
-      if (data.length > 0) {
-        setSelectedSetId(data[0].id)
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sets')
     } finally {
@@ -76,9 +75,18 @@ function Quiz() {
     loadSets()
   }, [])
 
+  const normalSets = sets.filter((set) => !set.name.endsWith(' - Retake'))
+  const retakeSets = sets.filter((set) => set.name.endsWith(' - Retake'))
+  const activeSets = activeTab === 'retakes' ? retakeSets : normalSets
+
   useEffect(() => {
     if (selectedSetId) {
       loadQuestions(selectedSetId)
+    } else {
+      setQuestions([])
+      setCount(0)
+      setStatus('idle')
+      setError('')
     }
   }, [selectedSetId])
 
@@ -308,43 +316,63 @@ function Quiz() {
       )}
 
       {!setsLoading && sets.length > 0 && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
-          <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-            Select Question Set
-          </label>
-          <select
-            id="setSelector"
-            value={selectedSetId || ''}
-            onChange={(e) => setSelectedSetId(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              border: '1px solid #cbd5e1',
-              borderRadius: '4px',
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-            }}
-          >
-            <option value="">-- Select a set --</option>
-            <optgroup label="Sets">
-              {sets
-                .filter((set) => !set.name.endsWith(' - Retake'))
-                .map((set) => (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div className="qsm-tab-list" style={{ marginBottom: '1rem' }}>
+            <button
+              type="button"
+              className={`qsm-tab ${activeTab === 'sets' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('sets')
+                if (activeTab !== 'sets') {
+                  setSelectedSetId(null)
+                }
+              }}
+            >
+              Sets ({normalSets.length})
+            </button>
+            <button
+              type="button"
+              className={`qsm-tab ${activeTab === 'retakes' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('retakes')
+                if (activeTab !== 'retakes') {
+                  setSelectedSetId(null)
+                }
+              }}
+            >
+              Retake Sets ({retakeSets.length})
+            </button>
+          </div>
+
+          <div style={{ padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
+            <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+              Select {activeTab === 'retakes' ? 'Retake' : 'Question'} Set
+            </label>
+
+            {activeSets.length > 0 ? (
+              <select
+                id="setSelector"
+                className="input"
+                value={selectedSetId || ''}
+                onChange={(e) => setSelectedSetId(e.target.value)}
+                style={{
+                  width: '100%',
+                  fontSize: 'inherit',
+                }}
+              >
+                <option value="">Select a set</option>
+                {activeSets.map((set) => (
                   <option key={set.id} value={set.id}>
                     {set.name} ({set.questionCount || 0} questions)
                   </option>
                 ))}
-            </optgroup>
-            <optgroup label="Retake Sets">
-              {sets
-                .filter((set) => set.name.endsWith(' - Retake'))
-                .map((set) => (
-                  <option key={set.id} value={set.id}>
-                    {set.name} ({set.questionCount || 0} questions)
-                  </option>
-                ))}
-            </optgroup>
-          </select>
+              </select>
+            ) : (
+              <p className="status-message" style={{ margin: 0 }}>
+                No {activeTab === 'retakes' ? 'retake sets' : 'question sets'} in this tab.
+              </p>
+            )}
+          </div>
         </div>
       )}
 

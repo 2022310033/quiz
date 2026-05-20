@@ -1,8 +1,8 @@
 function About() {
   return (
     <section className="page">
-      <h1>Take the quiz!</h1>
-      <p>Test your knowledge with our interactive quiz.</p>
+      <h1>Buy stickers!</h1>
+      <p>This is a future update! Please be patient!</p>
     </section>
   )
 }
