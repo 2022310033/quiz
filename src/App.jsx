@@ -5,6 +5,7 @@ import Home from './content/Home'
 import About from './content/About'
 import Quiz from './content/Quiz'
 import Exam from './content/Exam'
+import RealHome from './content/RealHome'
 
 function App() {
   return (
@@ -17,7 +18,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/exam" element={<Exam />} />
-          
+          <Route path="/home" element={<RealHome/>} />
           {/* Redirect any unknown routes to home */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
