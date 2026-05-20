@@ -8,6 +8,7 @@ import {
   createSet,
   deleteSet,
 } from '../utils/setManager'
+import '../components/QuestionSetManager.css'
 
 function Exam() {
   const [questions, setQuestions] = useState([])
@@ -18,6 +19,7 @@ function Exam() {
   const [sets, setSets] = useState([])
   const [selectedSetId, setSelectedSetId] = useState(null)
   const [setsLoading, setSetsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('sets')
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selected, setSelected] = useState('')
@@ -39,6 +41,32 @@ function Exam() {
     [questions, currentIndex],
   )
 
+  const shuffledAnswers = useMemo(() => {
+    if (!currentQuestion) return []
+
+    const originalChoices = ['A', 'B', 'C', 'D'].map((letter) => ({
+      origLetter: letter,
+      text: currentQuestion[`letter${letter}`],
+    }))
+
+    for (let i = originalChoices.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[originalChoices[i], originalChoices[j]] = [originalChoices[j], originalChoices[i]]
+    }
+
+    return originalChoices.map((choice, index) => ({
+      displayLetter: ['A', 'B', 'C', 'D'][index],
+      origLetter: choice.origLetter,
+      text: choice.text,
+      isCorrect: choice.origLetter === currentQuestion.correctAnswer,
+    }))
+  }, [currentQuestion?.id])
+
+  const currentCorrectAnswer = useMemo(
+    () => shuffledAnswers.find((choice) => choice.isCorrect)?.displayLetter ?? currentQuestion?.correctAnswer ?? '',
+    [shuffledAnswers, currentQuestion],
+  )
+
   const loadSets = async () => {
     setSetsLoading(true)
     try {
@@ -58,12 +86,17 @@ function Exam() {
     loadSets()
   }, [])
 
+  const normalSets = sets.filter((set) => !set.name.endsWith(' - Retake'))
+  const retakeSets = sets.filter((set) => set.name.endsWith(' - Retake'))
+  const activeSets = activeTab === 'retakes' ? retakeSets : normalSets
+
   const currentSet = useMemo(
     () => sets.find((set) => set.id === selectedSetId) ?? null,
     [sets, selectedSetId],
   )
 
-  const getRetakeSetName = (baseName) => `${baseName} - Retake`
+  const getRetakeSetName = (baseName) =>
+    baseName.endsWith(' - Retake') ? baseName : `${baseName} - Retake`
 
   const loadRetakeSet = async (setId) => {
     if (!setId) {
@@ -184,7 +217,13 @@ function Exam() {
   }
 
   useEffect(() => {
-    if (!selectedSetId) return
+    if (!selectedSetId) {
+      setQuestions([])
+      setStatus('idle')
+      setError('')
+      setReviewMode(false)
+      return
+    }
     setReviewMode(false)
     loadRetakeSet(selectedSetId)
     loadQuestionsForSet(selectedSetId)
@@ -244,7 +283,7 @@ function Exam() {
 
     if (!answer) {
       saveIncorrectQuestion(currentQuestion)
-      setFeedback(`Time's up! Correct answer: ${currentQuestion.correctAnswer}`)
+      setFeedback(`Time's up! Correct answer: ${currentCorrectAnswer}`)
       setFeedbackType('error')
       setTimeout(nextQuestion, 1500)
       return
@@ -252,13 +291,13 @@ function Exam() {
 
     setSelected(answer)
 
-    if (answer === currentQuestion.correctAnswer) {
+    if (answer === currentCorrectAnswer) {
       setScore((s) => s + 1)
       setFeedback('Correct!')
       setFeedbackType('success')
     } else {
       saveIncorrectQuestion(currentQuestion)
-      setFeedback(`Wrong. Correct answer: ${currentQuestion.correctAnswer}`)
+      setFeedback(`Wrong. Correct answer: ${currentCorrectAnswer}`)
       setFeedbackType('error')
     }
 
@@ -267,7 +306,7 @@ function Exam() {
 
   return (
     <section className="page panel">
-      <h1>Exam</h1>
+      {!hasStarted && <h1>Exam</h1>}
 
       {/* Set Selector */}
       {setsLoading && <p className="status-message">Loading question sets...</p>}
@@ -278,62 +317,67 @@ function Exam() {
         </div>
       )}
 
-      {!setsLoading && sets.length > 0 && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
-          <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
-            Select Question Set
-          </label>
-          <select
-            id="setSelector"
-            value={selectedSetId || ''}
-            onChange={(e) => {
-              setSelectedSetId(e.target.value)
-              setHasStarted(false)
-              setCompleted(false)
-            }}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              border: '1px solid #cbd5e1',
-              borderRadius: '4px',
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-            }}
-          >
-            <option value="">-- Select a set --</option>
-            <optgroup label="Sets">
-              {sets
-                .filter((set) => !set.name.endsWith(' - Retake'))
-                .map((set) => (
-                  <option key={set.id} value={set.id}>
-                    {set.name} ({set.questionCount || 0} questions)
-                  </option>
-                ))}
-            </optgroup>
-            <optgroup label="Retake Sets">
-              {sets
-                .filter((set) => set.name.endsWith(' - Retake'))
-                .map((set) => (
-                  <option key={set.id} value={set.id}>
-                    {set.name} ({set.questionCount || 0} questions)
-                  </option>
-                ))}
-            </optgroup>
-          </select>
-        </div>
-      )}
+      {!setsLoading && sets.length > 0 && !hasStarted && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div className="qsm-tab-list" style={{ marginBottom: '1rem' }}>
+            <button
+              type="button"
+              className={`qsm-tab ${activeTab === 'sets' ? 'active' : ''}`}
+              onClick={() => {
+                if (activeTab !== 'sets') {
+                  setActiveTab('sets')
+                  setSelectedSetId(null)
+                  setHasStarted(false)
+                  setCompleted(false)
+                }
+              }}
+            >
+              Sets ({normalSets.length})
+            </button>
+            <button
+              type="button"
+              className={`qsm-tab ${activeTab === 'retakes' ? 'active' : ''}`}
+              onClick={() => {
+                if (activeTab !== 'retakes') {
+                  setActiveTab('retakes')
+                  setSelectedSetId(null)
+                  setHasStarted(false)
+                  setCompleted(false)
+                }
+              }}
+            >
+              Retake Sets ({retakeSets.length})
+            </button>
+          </div>
 
-      {retakeSet && retakeSet.questionCount > 0 && !reviewMode && (
-        <div className="status-message" style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '6px', marginBottom: '1rem' }}>
-          <p style={{ margin: '0 0 0.75rem' }}>
-            Saved retake list: {retakeSet.questionCount} incorrect question{retakeSet.questionCount === 1 ? '' : 's'} saved to "{retakeSet.name}".
-          </p>
-          <button type="button" className="btn btn-primary" onClick={openRetakeReview} style={{ marginRight: '0.75rem' }}>
-            Review "{retakeSet.name}"
-          </button>
-          <button type="button" className="btn btn-danger" onClick={clearRetakeReview}>
-            Delete "{retakeSet.name}"
-          </button>
+          <div style={{ padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
+            <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+              Select {activeTab === 'retakes' ? 'Retake' : 'Question'} Set
+            </label>
+            <select
+              id="setSelector"
+              className="input"
+              value={selectedSetId || ''}
+              onChange={(e) => {
+                setSelectedSetId(e.target.value)
+                setHasStarted(false)
+                setCompleted(false)
+              }}
+              style={{ width: '100%' }}
+            >
+              <option value="">Select a set</option>
+              {activeSets.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {set.name} ({set.questionCount || 0} questions)
+                </option>
+              ))}
+            </select>
+            {activeSets.length === 0 && (
+              <p className="status-message" style={{ marginTop: '0.75rem' }}>
+                No {activeTab === 'retakes' ? 'retake sets' : 'sets'} available.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -390,11 +434,10 @@ function Exam() {
 
           <h2>{currentQuestion.question}</h2>
           <ul className="option-list">
-            {['A', 'B', 'C', 'D'].map((letter) => {
-              const optionText = currentQuestion[`letter${letter}`]
+            {shuffledAnswers.map((choice) => {
               const answered = !running && feedback !== '' && (selected !== '' || feedback.startsWith("Time"))
-              const isCorrect = letter === currentQuestion.correctAnswer
-              const isSelected = selected === letter
+              const isCorrect = choice.isCorrect
+              const isSelected = selected === choice.displayLetter
               const statusClass = answered
                 ? isCorrect
                   ? 'btn-option-correct'
@@ -404,14 +447,14 @@ function Exam() {
                 : ''
 
               return (
-                <li key={letter}>
+                <li key={choice.displayLetter}>
                   <button
                     type="button"
                     className={`btn btn-option ${statusClass}`}
-                    onClick={() => handleAnswer(letter)}
+                    onClick={() => handleAnswer(choice.displayLetter)}
                     disabled={!running}
                   >
-                    {letter}. {optionText}
+                    {choice.displayLetter}. {choice.text}
                   </button>
                 </li>
               )
