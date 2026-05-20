@@ -108,6 +108,8 @@
   font-size: 0.95rem;
   font-weight: 400;
   color: #334155;
+  background-color: white;
+  -webkit-text-fill-color: #334155;
   transition: all 0.2s ease;
   box-sizing: border-box;
 }
@@ -116,6 +118,13 @@ select.input {
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 400;
+  background-color: white;
+  color: #334155;
+}
+
+input[type="number"].input {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .input:focus {
