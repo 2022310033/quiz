@@ -40,6 +40,21 @@ const THEMES = {
   }
 };
 
+const Quotes = [
+  "The expert in anything was once a beginner.",
+  "Push yourself, because no one else is going to do it for you.",
+  "Great things never come from comfort zones.",
+  "Dream it. Wish it. Do it.",
+  "Success doesn't just find you. You have to go out and get it.",
+  "The harder you work for something, the greater you'll feel when you achieve it.",
+  "Don't stop when you're tired. Stop when you're done.",
+  "Wake up with determination. Go to bed with satisfaction.",
+  "Do something today that your future self will thank you for.",
+  "Little things make big days."
+];
+
+
+
 function CountdownTimerWithThemes() {
   const [currentTheme, setCurrentTheme] = useState('purple');
   const [targetDate] = useState(new Date('2026-09-20T23:59:59'));
@@ -81,7 +96,8 @@ function CountdownTimerWithThemes() {
   };
 
   const theme = THEMES[currentTheme];
-
+  const [quote, setQuote] = useState(() => Quotes[Math.floor(Math.random() * Quotes.length)]);
+  
   return (
     <div className="countdown-page">
       <div className="countdown-card" style={{ backgroundImage: theme.gradient }}>
@@ -135,11 +151,11 @@ function CountdownTimerWithThemes() {
         </div>
 
         <div className="countdown-action-row">
-          <button className="countdown-action-button">
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-            </svg>
-            <span>English</span>
+          <button
+            className="countdown-action-button"
+            onClick={() => setQuote(Quotes[Math.floor(Math.random() * Quotes.length)])}
+          >
+            <span>"{quote}"</span>
           </button>
         </div>
 
@@ -147,6 +163,7 @@ function CountdownTimerWithThemes() {
           <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
+          <span>Exam Day: </span>
           <span>{formatDate(targetDate)}</span>
         </div>
       </div>
