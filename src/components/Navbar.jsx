@@ -7,10 +7,11 @@ function Navbar() {
       <div className="navbar-brand">Quiz App!</div>
 
       <ul className="navbar-links">
-        <li><NavLink to="/">Home</NavLink></li>
+        <li><NavLink to="/home">Home</NavLink></li>
+        <li><NavLink to="/">Sets</NavLink></li>
+        <li><NavLink to="/quiz">Create</NavLink></li>
+        <li><NavLink to="/exam">Quiz</NavLink></li>
         <li><NavLink to="/about">Store</NavLink></li>
-        <li><NavLink to="/quiz">Quiz</NavLink></li>
-        <li><NavLink to="/exam">Exam</NavLink></li>
       </ul>
     </nav>
   )

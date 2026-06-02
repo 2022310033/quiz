@@ -1,0 +1,239 @@
+.countdown-page {
+  margin: auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  transition: all 0.7s ease;
+  background: transparent;
+  min-height: 80vh;
+  box-sizing: border-box;
+}
+
+.countdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.countdown-top-row {
+  position: relative;
+  margin-bottom: 0;
+  padding-top: 0;
+  height: 0;
+}
+
+.countdown-theme-toggle {
+  position: absolute;
+  top: -2rem;
+  right: 1.5rem;
+  z-index: 999;
+}
+
+.countdown-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 12rem;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 1rem;
+  padding: 0.5rem;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(14px);
+  z-index: 9999;
+
+  /* Theme Gapping */
+  display: flex;        
+  flex-direction: column; 
+  gap: 0.3rem;
+}
+
+.countdown-title-row {
+  text-align: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.countdown-button,
+.countdown-action-button,
+.countdown-dropdown-button,
+.countdown-info-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: #1f2937;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.countdown-button:hover,
+.countdown-action-button:hover,
+.countdown-dropdown-button:hover {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.countdown-button:active,
+.countdown-action-button:active,
+.countdown-dropdown-button:active {
+  transform: scale(0.98);
+}
+
+.countdown-dropdown-button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.75rem 1rem;
+  border-radius: 0.9rem;
+  border: none;
+}
+
+.countdown-dropdown-button:hover {
+  background: #f1f5f9;
+}
+
+.countdown-dropdown-button.active {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.theme-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.countdown-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 44rem;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2rem;
+  padding: 4.5rem 3rem 5rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow: visible;
+}
+
+.countdown-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%);
+  pointer-events: none;
+}
+
+.countdown-card > * {
+  position: relative;
+}
+
+.icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
+  flex-shrink: 0;
+}
+
+.countdown-headline {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.countdown-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.countdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.countdown-value {
+  margin: 0 0 0.5rem;
+  font-size: 3rem;
+  line-height: 1;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.countdown-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.countdown-action-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.countdown-info-box {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  font-weight: 600;
+  color: #334155;
+}
+
+@media (max-width: 768px) {
+  .countdown-card {
+    padding: 2rem;
+  }
+
+  .countdown-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .countdown-theme-toggle {
+    position: static;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .countdown-dropdown {
+    right: 50%;
+    transform: translateX(50%);
+  }
+
+  .countdown-info-box {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}
