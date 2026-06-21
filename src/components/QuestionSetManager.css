@@ -177,6 +177,121 @@
   color: white;
 }
 
+.qsm-folder-panel {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f8fafc;
+}
+
+.qsm-folder-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.qsm-folder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.qsm-folder-list-vertical {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.qsm-folder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.qsm-folder-row:hover {
+  border-color: #93c5fd;
+  background-color: #eff6ff;
+}
+
+.qsm-folder-count {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.qsm-folder-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 0.25rem;
+}
+
+.qsm-folder-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+/* Vertical layout for back button above folder name */
+.qsm-folder-header-vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.qsm-folder-header-vertical .qsm-button-cancel {
+  align-self: flex-start;
+}
+
+.qsm-folder-info {
+  text-align: center;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.qsm-folder-header p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.qsm-folder-chip {
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid #dbeafe;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #1e3a8a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.qsm-folder-chip:hover {
+  background-color: #eff6ff;
+}
+
+.qsm-folder-chip.active {
+  background-color: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
 /* Sets List */
 .qsm-empty-state {
   text-align: center;
@@ -187,6 +302,31 @@
 .qsm-sets-grid {
   display: grid;
   gap: 1rem;
+  /* Default to single-column list for mobile and small screens */
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  /* Use wider card grid on larger desktop viewports */
+  .qsm-sets-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+.question-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.06);
+  padding: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.question-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
 }
 
 .qsm-set-card {
@@ -195,12 +335,26 @@
   align-items: flex-start;
   gap: 1rem;
   width: 100%;
+  min-width: 0;
 }
 
 .qsm-set-info {
   flex: 1;
   text-align: left;
   min-width: 0;
+}
+
+.qsm-clickable-set {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0.25rem;
+  margin: -0.25rem;
+}
+
+.qsm-clickable-set:hover .qsm-set-name,
+.qsm-clickable-set:focus .qsm-set-name {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 .qsm-set-name {
@@ -224,16 +378,27 @@
   text-align: left;
 }
 
+.qsm-set-folder {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
 .qsm-set-actions {
   display: flex;
   gap: 0.5rem;
   flex-shrink: 0;
   margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .qsm-button-small {
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
+  min-width: 0;
 }
 
 .qsm-button-delete {
@@ -243,4 +408,28 @@
 
 .qsm-button-delete:hover {
   background-color: #fecaca;
+}
+
+@media (max-width: 640px) {
+  .qsm-folder-form {
+    grid-template-columns: 1fr;
+  }
+
+  .qsm-sets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .qsm-set-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .qsm-set-actions {
+    margin-left: 0;
+    justify-content: stretch;
+  }
+
+  .qsm-button-small {
+    width: 100%;
+  }
 }

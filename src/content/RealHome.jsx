@@ -101,42 +101,39 @@ function CountdownTimerWithThemes() {
   return (
     <div className="countdown-page">
       <div className="countdown-card" style={{ backgroundImage: theme.gradient }}>
-        <div className="countdown-top-row">
-          <div></div>
-          <div className="countdown-theme-toggle">
-            <button
-              onClick={() => setShowThemeSelector(!showThemeSelector)}
-              className="countdown-button"
-            >
-              <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
-              <span>Theme</span>
-            </button>
+        <div className="countdown-theme-toggle">
+          <button
+            onClick={() => setShowThemeSelector(!showThemeSelector)}
+            className="countdown-button"
+          >
+            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            </svg>
+            <span>Theme</span>
+          </button>
 
-            {showThemeSelector && (
-              <div className="countdown-dropdown">
-                {Object.keys(THEMES).map((themeKey) => {
-                  const themeItem = THEMES[themeKey];
-                  return (
-                    <button
-                      key={themeKey}
-                      onClick={() => {
-                        setCurrentTheme(themeKey);
-                        setShowThemeSelector(false);
-                      }}
-                      className={`countdown-dropdown-button ${currentTheme === themeKey ? 'active' : ''}`}
-                    >
-                      <div className="theme-item-label">
-                        <span className="theme-dot" style={{ backgroundColor: themeItem.accent }}></span>
-                        <span>{themeItem.name}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {showThemeSelector && (
+            <div className="countdown-dropdown">
+              {Object.keys(THEMES).map((themeKey) => {
+                const themeItem = THEMES[themeKey];
+                return (
+                  <button
+                    key={themeKey}
+                    onClick={() => {
+                      setCurrentTheme(themeKey);
+                      setShowThemeSelector(false);
+                    }}
+                    className={`countdown-dropdown-button ${currentTheme === themeKey ? 'active' : ''}`}
+                  >
+                    <div className="theme-item-label">
+                      <span className="theme-dot" style={{ backgroundColor: themeItem.accent }}></span>
+                      <span>{themeItem.name}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="countdown-title-row">

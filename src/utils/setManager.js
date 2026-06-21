@@ -6,26 +6,72 @@ import {
   getDocs,
   query,
   where,
+  orderBy,
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase/firebase'
 
+let cachedFolders = null
+let cachedSets = null
+const cachedQuestionsBySet = new Map()
+
+export function clearCache() {
+  cachedFolders = null
+  cachedSets = null
+  cachedQuestionsBySet.clear()
+}
+
+/**
+ * Get all folders
+ */
+export async function getAllFolders(forceRefresh = false) {
+  if (cachedFolders && !forceRefresh) {
+    return cachedFolders
+  }
+
+  try {
+    const snapshot = await getDocs(query(collection(db, 'folders'), orderBy('name')))
+    const folders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    cachedFolders = folders
+    return folders
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to fetch folders')
+  }
+}
+
+/**
+ * Create a new folder
+ */
+export async function createFolder(name) {
+  try {
+    const trimmedName = name.trim()
+    const docRef = await addDoc(collection(db, 'folders'), {
+      name: trimmedName,
+      createdAt: serverTimestamp(),
+    })
+
+    cachedFolders = null
+    return { id: docRef.id, name: trimmedName }
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to create folder')
+  }
+}
+
 /**
  * Get all question sets
  */
-export async function getAllSets() {
+export async function getAllSets(forceRefresh = false) {
+  if (cachedSets && !forceRefresh) {
+    return cachedSets
+  }
+
   try {
-    const snapshot = await getDocs(collection(db, 'questionSets'))
-    let sets = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-    
-    // Sort by createdAt (newest first)
-    sets = sets.sort((a, b) => {
-      const timeA = a.createdAt?.toMillis?.() || 0
-      const timeB = b.createdAt?.toMillis?.() || 0
-      return timeB - timeA
-    })
-    
+    const snapshot = await getDocs(
+      query(collection(db, 'questionSets'), orderBy('createdAt', 'desc'))
+    )
+    const sets = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    cachedSets = sets
     return sets
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to fetch sets')
@@ -35,15 +81,27 @@ export async function getAllSets() {
 /**
  * Create a new question set
  */
-export async function createSet(name, description = '') {
+export async function createSet(name, description = '', options = {}) {
   try {
     const docRef = await addDoc(collection(db, 'questionSets'), {
       name,
       description,
+      folderId: options.folderId || '',
+      type: options.type || (name.endsWith(' - Retake') ? 'retake' : 'set'),
+      sourceSetId: options.sourceSetId || null,
       questionCount: 0,
       createdAt: serverTimestamp(),
     })
-    return { id: docRef.id, name, description, questionCount: 0 }
+    cachedSets = null
+    return {
+      id: docRef.id,
+      name,
+      description,
+      folderId: options.folderId || '',
+      type: options.type || (name.endsWith(' - Retake') ? 'retake' : 'set'),
+      sourceSetId: options.sourceSetId || null,
+      questionCount: 0,
+    }
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to create set')
   }
@@ -70,6 +128,44 @@ export async function getSetByName(name) {
 }
 
 /**
+ * Find a retake set by its original set ID
+ */
+export async function getRetakeSetBySourceSetId(sourceSetId) {
+  try {
+    const snapshot = await getDocs(
+      query(collection(db, 'questionSets'), where('sourceSetId', '==', sourceSetId))
+    )
+
+    if (snapshot.empty) {
+      return null
+    }
+
+    const docSnap =
+      snapshot.docs.find((item) => item.data().type === 'retake') || snapshot.docs[0]
+
+    return { id: docSnap.id, ...docSnap.data() }
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to fetch retake set')
+  }
+}
+
+/**
+ * Keep a retake set attached to its source set and folder
+ */
+export async function updateRetakeSetMetadata(setId, sourceSetId, folderId = '') {
+  try {
+    const ref = doc(db, 'questionSets', setId)
+    await updateDoc(ref, {
+      folderId,
+      type: 'retake',
+      sourceSetId,
+    })
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to update retake set')
+  }
+}
+
+/**
  * Find saved retake questions by original question ID
  */
 export async function getQuestionsByOriginalQuestionId(setId, originalQuestionId) {
@@ -91,13 +187,35 @@ export async function getQuestionsByOriginalQuestionId(setId, originalQuestionId
 /**
  * Update a question set
  */
-export async function updateSet(setId, name, description) {
+export async function updateSet(setId, name, description, folderId = '') {
   try {
     const ref = doc(db, 'questionSets', setId)
     await updateDoc(ref, {
       name,
       description,
+      folderId,
     })
+
+    const retakeName = name.endsWith(' - Retake') ? name : `${name} - Retake`
+    const [retakeBySourceSnapshot, retakeByNameSnapshot] = await Promise.all([
+      getDocs(query(collection(db, 'questionSets'), where('sourceSetId', '==', setId))),
+      getDocs(query(collection(db, 'questionSets'), where('name', '==', retakeName))),
+    ])
+
+    const retakeDocs = new Map()
+    for (const docSnap of [...retakeBySourceSnapshot.docs, ...retakeByNameSnapshot.docs]) {
+      retakeDocs.set(docSnap.id, docSnap)
+    }
+
+    for (const docSnap of retakeDocs.values()) {
+      await updateDoc(doc(db, 'questionSets', docSnap.id), {
+        folderId,
+        type: 'retake',
+        sourceSetId: setId,
+      })
+    }
+
+    cachedSets = null
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to update set')
   }
@@ -120,6 +238,9 @@ export async function deleteSet(setId) {
     // Delete the set itself
     const ref = doc(db, 'questionSets', setId)
     await deleteDoc(ref)
+
+    cachedSets = null
+    cachedQuestionsBySet.delete(setId)
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to delete set')
   }
@@ -128,21 +249,25 @@ export async function deleteSet(setId) {
 /**
  * Get all questions for a specific set
  */
-export async function getQuestionsBySet(setId) {
+export async function getQuestionsBySet(setId, forceRefresh = false) {
+  if (cachedQuestionsBySet.has(setId) && !forceRefresh) {
+    return cachedQuestionsBySet.get(setId)
+  }
+
   try {
     const snapshot = await getDocs(
       query(collection(db, 'questions'), where('setId', '==', setId))
     )
-    
-    let questions = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
-    
-    // Sort by createdAt (newest first)
-    questions = questions.sort((a, b) => {
-      const timeA = a.createdAt?.toMillis?.() || 0
-      const timeB = b.createdAt?.toMillis?.() || 0
-      return timeB - timeA
-    })
-    
+
+    const questions = snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || 0
+        const timeB = b.createdAt?.toMillis?.() || 0
+        return timeB - timeA
+      })
+
+    cachedQuestionsBySet.set(setId, questions)
     return questions
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to fetch questions')
@@ -165,6 +290,10 @@ export async function addQuestionToSet(setId, questionData) {
       createdAt: serverTimestamp(),
     }
 
+    if (questionData.notes != null) {
+      payload.notes = questionData.notes
+    }
+
     if (questionData.originalQuestionId) {
       payload.originalQuestionId = questionData.originalQuestionId
     }
@@ -174,6 +303,9 @@ export async function addQuestionToSet(setId, questionData) {
     }
 
     const docRef = await addDoc(collection(db, 'questions'), payload)
+
+    cachedQuestionsBySet.delete(setId)
+    cachedSets = null
 
     // Update question count on the set
     await updateSetQuestionCount(setId)
@@ -190,14 +322,24 @@ export async function addQuestionToSet(setId, questionData) {
 export async function updateQuestion(questionId, questionData) {
   try {
     const ref = doc(db, 'questions', questionId)
-    await updateDoc(ref, {
+    const updatePayload = {
       question: questionData.question,
       letterA: questionData.letterA,
       letterB: questionData.letterB,
       letterC: questionData.letterC,
       letterD: questionData.letterD,
       correctAnswer: questionData.correctAnswer,
-    })
+    }
+
+    if (questionData.notes != null) {
+      updatePayload.notes = questionData.notes
+    }
+
+    await updateDoc(ref, updatePayload)
+
+    // Invalidate all cached question lists to keep updates fresh
+    cachedQuestionsBySet.clear()
+    cachedSets = null
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to update question')
   }
@@ -211,6 +353,9 @@ export async function deleteQuestion(questionId, setId) {
     const ref = doc(db, 'questions', questionId)
     await deleteDoc(ref)
     
+    cachedQuestionsBySet.delete(setId)
+    cachedSets = null
+
     // Update question count on the set
     await updateSetQuestionCount(setId)
   } catch (err) {
@@ -231,6 +376,8 @@ export async function updateSetQuestionCount(setId) {
     await updateDoc(ref, {
       questionCount: snapshot.size,
     })
+
+    cachedSets = null
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to update question count')
   }
