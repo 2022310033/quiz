@@ -1,25 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import {
+  getAllFolders,
   getAllSets,
   getQuestionsBySet,
   getSetByName,
+  getRetakeSetBySourceSetId,
   getQuestionsByOriginalQuestionId,
   addQuestionToSet,
   createSet,
+  updateRetakeSetMetadata,
   deleteSet,
 } from '../utils/setManager'
 import '../components/QuestionSetManager.css'
 
 function Exam() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedSetId = searchParams.get('setId')
+  const location = useLocation()
+  const fromFolderId = location?.state?.fromFolderId || null
   const [questions, setQuestions] = useState([])
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
 
   // Sets management
   const [sets, setSets] = useState([])
+  const [folders, setFolders] = useState([])
   const [selectedSetId, setSelectedSetId] = useState(null)
   const [setsLoading, setSetsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('sets')
+  const [activeFolderId, setActiveFolderId] = useState('all')
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selected, setSelected] = useState('')
@@ -35,6 +46,7 @@ function Exam() {
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [timePerQuestion, setTimePerQuestion] = useState(30)
   const [running, setRunning] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
 
   const currentQuestion = useMemo(
     () => (questions.length > 0 ? questions[currentIndex] : null),
@@ -70,8 +82,9 @@ function Exam() {
   const loadSets = async () => {
     setSetsLoading(true)
     try {
-      const data = await getAllSets()
+      const [data, folderData] = await Promise.all([getAllSets(), getAllFolders()])
       setSets(data)
+      setFolders(folderData)
       if (data.length > 0 && !selectedSetId) {
         setSelectedSetId(data[0].id)
       }
@@ -86,9 +99,29 @@ function Exam() {
     loadSets()
   }, [])
 
-  const normalSets = sets.filter((set) => !set.name.endsWith(' - Retake'))
-  const retakeSets = sets.filter((set) => set.name.endsWith(' - Retake'))
-  const activeSets = activeTab === 'retakes' ? retakeSets : normalSets
+  useEffect(() => {
+    if (!requestedSetId || sets.length === 0) return
+
+    const requestedSet = sets.find((set) => set.id === requestedSetId)
+    if (!requestedSet) return
+
+    setActiveTab(isRetakeSet(requestedSet) ? 'retakes' : 'sets')
+    setActiveFolderId(requestedSet.folderId || 'unfiled')
+    setSelectedSetId(requestedSet.id)
+    setHasStarted(false)
+    setCompleted(false)
+  }, [requestedSetId, sets])
+
+  const isRetakeSet = (set) => set.type === 'retake' || set.name.endsWith(' - Retake')
+  const matchesActiveFolder = (set) => {
+    if (activeFolderId === 'all') return true
+    if (activeFolderId === 'unfiled') return !set.folderId
+    return set.folderId === activeFolderId
+  }
+
+  const normalSets = sets.filter((set) => !isRetakeSet(set))
+  const retakeSets = sets.filter((set) => isRetakeSet(set))
+  const activeSets = (activeTab === 'retakes' ? retakeSets : normalSets).filter(matchesActiveFolder)
 
   const currentSet = useMemo(
     () => sets.find((set) => set.id === selectedSetId) ?? null,
@@ -97,6 +130,27 @@ function Exam() {
 
   const getRetakeSetName = (baseName) =>
     baseName.endsWith(' - Retake') ? baseName : `${baseName} - Retake`
+
+  const syncRetakeSetMetadata = async (reviewSet, baseSet) => {
+    if (!reviewSet || !baseSet) return reviewSet
+
+    const expectedFolderId = baseSet.folderId || ''
+    const needsSync =
+      reviewSet.folderId !== expectedFolderId ||
+      reviewSet.type !== 'retake' ||
+      reviewSet.sourceSetId !== baseSet.id
+
+    if (!needsSync) return reviewSet
+
+    await updateRetakeSetMetadata(reviewSet.id, baseSet.id, expectedFolderId)
+
+    return {
+      ...reviewSet,
+      folderId: expectedFolderId,
+      type: 'retake',
+      sourceSetId: baseSet.id,
+    }
+  }
 
   const loadRetakeSet = async (setId) => {
     if (!setId) {
@@ -113,8 +167,9 @@ function Exam() {
     try {
       setRetakeLoading(true)
       const reviewName = getRetakeSetName(baseSet.name)
-      const reviewSet = await getSetByName(reviewName)
-      setRetakeSet(reviewSet)
+      const reviewSet =
+        (await getRetakeSetBySourceSetId(baseSet.id)) || (await getSetByName(reviewName))
+      setRetakeSet(await syncRetakeSetMetadata(reviewSet, baseSet))
     } catch (err) {
       console.error(err)
       setRetakeSet(null)
@@ -127,10 +182,23 @@ function Exam() {
     if (!currentSet) return null
 
     const reviewName = getRetakeSetName(currentSet.name)
-    let reviewSet = retakeSet && retakeSet.name === reviewName ? retakeSet : await getSetByName(reviewName)
+    let reviewSet =
+      retakeSet && (retakeSet.sourceSetId === currentSet.id || retakeSet.name === reviewName)
+        ? retakeSet
+        : await getRetakeSetBySourceSetId(currentSet.id)
 
     if (!reviewSet) {
-      reviewSet = await createSet(reviewName, `Retake list for ${currentSet.name}`)
+      reviewSet = await getSetByName(reviewName)
+    }
+
+    if (!reviewSet) {
+      reviewSet = await createSet(reviewName, `Retake list for ${currentSet.name}`, {
+        folderId: currentSet.folderId || '',
+        type: 'retake',
+        sourceSetId: currentSet.id,
+      })
+    } else {
+      reviewSet = await syncRetakeSetMetadata(reviewSet, currentSet)
     }
 
     setRetakeSet(reviewSet)
@@ -306,7 +374,21 @@ function Exam() {
 
   return (
     <section className="page panel">
-      {!hasStarted && <h1>Exam</h1>}
+
+<div style={{ marginBottom: '1rem' }}>
+  {selectedSetId && (
+    <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+      <button
+        type="button"
+        className="qsm-button-cancel"
+        onClick={() => navigate('/', { state: { activeFolderId: fromFolderId } })}
+      >
+        Back
+      </button>
+    </div>
+  )}
+  {!hasStarted && <h1 style={{ margin: '1rem 0 0 0', textAlign: 'center' }}>Exam</h1>}
+</div>
 
       {/* Set Selector */}
       {setsLoading && <p className="status-message">Loading question sets...</p>}
@@ -319,36 +401,6 @@ function Exam() {
 
       {!setsLoading && sets.length > 0 && !hasStarted && (
         <div style={{ marginBottom: '1.5rem' }}>
-          <div className="qsm-tab-list" style={{ marginBottom: '1rem' }}>
-            <button
-              type="button"
-              className={`qsm-tab ${activeTab === 'sets' ? 'active' : ''}`}
-              onClick={() => {
-                if (activeTab !== 'sets') {
-                  setActiveTab('sets')
-                  setSelectedSetId(null)
-                  setHasStarted(false)
-                  setCompleted(false)
-                }
-              }}
-            >
-              Sets ({normalSets.length})
-            </button>
-            <button
-              type="button"
-              className={`qsm-tab ${activeTab === 'retakes' ? 'active' : ''}`}
-              onClick={() => {
-                if (activeTab !== 'retakes') {
-                  setActiveTab('retakes')
-                  setSelectedSetId(null)
-                  setHasStarted(false)
-                  setCompleted(false)
-                }
-              }}
-            >
-              Retake Sets ({retakeSets.length})
-            </button>
-          </div>
 
           <div style={{ padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
             <label htmlFor="setSelector" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -407,8 +459,8 @@ function Exam() {
       )}
 
       {status === 'success' && questions.length > 0 && !hasStarted && selectedSetId && (
-        <div className="exam-setup">
-          <label className="form-label">
+        <div className="exam-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <label className="form-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
             Seconds per question:
             <input
               className="input"
@@ -417,7 +469,16 @@ function Exam() {
               max="300"
               value={timePerQuestion}
               onChange={(e) => setTimePerQuestion(Number(e.target.value) || 0)}
+              style={{ width: '120px', textAlign: 'center' }}
             />
+          </label>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="checkbox"
+              checked={showNotes}
+              onChange={(e) => setShowNotes(e.target.checked)}
+            />
+            Take exam with notes
           </label>
           <button type="button" className="btn btn-primary" onClick={startExam}>
             Start Exam
@@ -426,45 +487,58 @@ function Exam() {
       )}
 
       {currentQuestion && !completed && hasStarted && (
-        <div className="exam-card">
-          <p className="exam-meta">
-            Question {currentIndex + 1} of {questions.length}
-          </p>
-          <p className="exam-timer">Time left: {secondsLeft}s</p>
-
-          <h2>{currentQuestion.question}</h2>
-          <ul className="option-list">
-            {shuffledAnswers.map((choice) => {
-              const answered = !running && feedback !== '' && (selected !== '' || feedback.startsWith("Time"))
-              const isCorrect = choice.isCorrect
-              const isSelected = selected === choice.displayLetter
-              const statusClass = answered
-                ? isCorrect
-                  ? 'btn-option-correct'
-                  : isSelected
-                    ? 'btn-option-incorrect'
-                    : ''
-                : ''
-
-              return (
-                <li key={choice.displayLetter}>
-                  <button
-                    type="button"
-                    className={`btn btn-option ${statusClass}`}
-                    onClick={() => handleAnswer(choice.displayLetter)}
-                    disabled={!running}
-                  >
-                    {choice.displayLetter}. {choice.text}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-
-          {feedback && (
-            <p className={`feedback-message ${feedbackType === 'success' ? 'feedback-success' : feedbackType === 'error' ? 'feedback-error' : ''}`}>
-              {feedback}
+        <div style={{ position: 'relative', paddingBottom: '1rem' }}>
+          <div className="exam-card">
+            <p className="exam-meta">
+              Question {currentIndex + 1} of {questions.length}
             </p>
+            <p className="exam-timer">Time left: {secondsLeft}s</p>
+
+            <h2>{currentQuestion.question}</h2>
+            <ul className="option-list">
+              {shuffledAnswers.map((choice) => {
+                const answered = !running && feedback !== '' && (selected !== '' || feedback.startsWith("Time"))
+                const isCorrect = choice.isCorrect
+                const isSelected = selected === choice.displayLetter
+                const statusClass = answered
+                  ? isCorrect
+                    ? 'btn-option-correct'
+                    : isSelected
+                      ? 'btn-option-incorrect'
+                      : ''
+                  : ''
+
+                return (
+                  <li key={choice.displayLetter}>
+                    <button
+                      type="button"
+                      className={`btn btn-option ${statusClass}`}
+                      onClick={() => handleAnswer(choice.displayLetter)}
+                      disabled={!running}
+                    >
+                      {choice.displayLetter}. {choice.text}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+
+            {feedback && (
+              <p className={`feedback-message ${feedbackType === 'success' ? 'feedback-success' : feedbackType === 'error' ? 'feedback-error' : ''}`}>
+                {feedback}
+              </p>
+            )}
+          </div>
+
+          {showNotes && (
+            <div style={{ position: 'absolute', top: '0', right: '-260px', width: '240px', zIndex: 10 }}>
+              <div style={{ border: '1px solid #cbd5e1', borderRadius: '16px', padding: '0.85rem', backgroundColor: '#f8fafc', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)' }}>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Notes</h4>
+                <div style={{ fontSize: '0.9rem', lineHeight: '1.5', minHeight: '5rem' }}>
+                  {currentQuestion.notes ? currentQuestion.notes : 'No notes available for this question.'}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

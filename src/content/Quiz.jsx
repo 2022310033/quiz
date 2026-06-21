@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { extractTextFromPDF, parseQuestionsFromText } from '../utils/questionParser'
 import {
+  getAllFolders,
   getAllSets,
   getQuestionsBySet,
   addQuestionToSet,
@@ -11,27 +13,48 @@ import {
 import '../components/QuestionSetManager.css'
 
 function Quiz() {
+
+  const navigate = useNavigate()
+
+  const [searchParams] = useSearchParams()
+
+  const requestedSetId = searchParams.get('setId')
+
+  const location = useLocation()
+
+  const fromFolderId = location?.state?.fromFolderId || null
+
   const [status, setStatus] = useState('idle')
+
   const [count, setCount] = useState(0)
+
   const [error, setError] = useState('')
+
   const [saveStatus, setSaveStatus] = useState('idle')
+
   const [formError, setFormError] = useState('')
+
   const [questions, setQuestions] = useState([])
+
   const [editingId, setEditingId] = useState(null)
+
   const [form, setForm] = useState({
-    question: '',
-    letterA: '',
-    letterB: '',
-    letterC: '',
-    letterD: '',
-    correctAnswer: 'A',
-  })
+  question: '',
+  letterA: '',
+  letterB: '',
+  letterC: '',
+  letterD: '',
+  correctAnswer: 'A',
+  notes: '',
+})
 
   // Sets management
   const [sets, setSets] = useState([])
+  const [folders, setFolders] = useState([])
   const [selectedSetId, setSelectedSetId] = useState(null)
   const [setsLoading, setSetsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('sets')
+  const [activeFolderId, setActiveFolderId] = useState('all')
 
   const [uploadStatus, setUploadStatus] = useState('idle')
   const [uploadError, setUploadError] = useState('')
@@ -45,8 +68,9 @@ function Quiz() {
     setSetsLoading(true)
     setError('')
     try {
-      const data = await getAllSets()
+      const [data, folderData] = await Promise.all([getAllSets(), getAllFolders()])
       setSets(data)
+      setFolders(folderData)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sets')
     } finally {
@@ -55,6 +79,7 @@ function Quiz() {
   }
 
   const loadQuestions = async (setId) => {
+
     if (!setId) return
     
     setStatus('loading')
@@ -75,9 +100,29 @@ function Quiz() {
     loadSets()
   }, [])
 
-  const normalSets = sets.filter((set) => !set.name.endsWith(' - Retake'))
-  const retakeSets = sets.filter((set) => set.name.endsWith(' - Retake'))
-  const activeSets = activeTab === 'retakes' ? retakeSets : normalSets
+  const isRetakeSet = (set) => set.type === 'retake' || set.name.endsWith(' - Retake')
+
+  const matchesActiveFolder = (set) => {
+    if (activeFolderId === 'all') return true
+    if (activeFolderId === 'unfiled') return !set.folderId
+    return set.folderId === activeFolderId
+  }
+
+  const normalSets = sets.filter((set) => !isRetakeSet(set))
+  const retakeSets = sets.filter((set) => isRetakeSet(set))
+  const activeSets = (activeTab === 'retakes' ? retakeSets : normalSets).filter(matchesActiveFolder)
+
+  useEffect(() => {
+
+    if (!requestedSetId || sets.length === 0) return
+
+    const requestedSet = sets.find((set) => set.id === requestedSetId)
+    if (!requestedSet) return
+
+    setActiveTab(isRetakeSet(requestedSet) ? 'retakes' : 'sets')
+    setActiveFolderId(requestedSet.folderId || 'unfiled')
+    setSelectedSetId(requestedSet.id)
+  }, [requestedSetId, sets])
 
   useEffect(() => {
     if (selectedSetId) {
@@ -128,6 +173,7 @@ function Quiz() {
           letterC: form.letterC.trim(),
           letterD: form.letterD.trim(),
           correctAnswer: form.correctAnswer,
+          notes: form.notes.trim(),
         })
       } else {
         await addQuestionToSet(selectedSetId, {
@@ -137,6 +183,7 @@ function Quiz() {
           letterC: form.letterC.trim(),
           letterD: form.letterD.trim(),
           correctAnswer: form.correctAnswer,
+          notes: form.notes.trim(),
         })
       }
 
@@ -148,6 +195,7 @@ function Quiz() {
         letterC: '',
         letterD: '',
         correctAnswer: 'A',
+        notes: '',
       })
       setEditingId(null)
       await loadQuestions(selectedSetId)
@@ -166,6 +214,7 @@ function Quiz() {
       letterC: question.letterC ?? '',
       letterD: question.letterD ?? '',
       correctAnswer: question.correctAnswer ?? 'A',
+      notes: question.notes ?? '',
     })
     setQuestionInputMode('manual')
     setManualModalOpen(true)
@@ -181,6 +230,7 @@ function Quiz() {
       letterC: '',
       letterD: '',
       correctAnswer: 'A',
+      notes: '',
     })
   }
 
@@ -303,7 +353,20 @@ function Quiz() {
 
   return (
     <section className="page panel">
-      <h1>Quiz Manager</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        {selectedSetId && (
+          <button
+            type="button"
+            className="qsm-button-cancel"
+            onClick={() => {
+              navigate('/', { state: { activeFolderId: fromFolderId } })
+            }}
+          >
+            Back
+          </button>
+        )}
+        <h1 style={{ margin: 0 }}>Quiz Manager</h1>
+      </div>
       <p className="section-subtitle">Add, edit, or delete questions</p>
 
       {/* Set Selector */}
@@ -317,31 +380,8 @@ function Quiz() {
 
       {!setsLoading && sets.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
-          <div className="qsm-tab-list" style={{ marginBottom: '1rem' }}>
-            <button
-              type="button"
-              className={`qsm-tab ${activeTab === 'sets' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('sets')
-                if (activeTab !== 'sets') {
-                  setSelectedSetId(null)
-                }
-              }}
-            >
-              Sets ({normalSets.length})
-            </button>
-            <button
-              type="button"
-              className={`qsm-tab ${activeTab === 'retakes' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('retakes')
-                if (activeTab !== 'retakes') {
-                  setSelectedSetId(null)
-                }
-              }}
-            >
-              Retake Sets ({retakeSets.length})
-            </button>
+        
+          <div className="qsm-folder-list" style={{ marginBottom: '1rem' }}>
           </div>
 
           <div style={{ padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '6px' }}>
@@ -547,6 +587,21 @@ Answer: B`}
                 onChange={handleChange}
                 placeholder="Letter D"
               />
+
+              <div className="qsm-form-group">
+              <label htmlFor="notes" className="qsm-label">
+                Notes <span className="qsm-label-optional">(optional)</span>
+              </label>
+              <textarea
+                id="notes"
+                name="notes"
+                value={form.notes}
+                onChange={handleChange}
+                placeholder="Add notes or explanation for this question"
+                rows="3"
+                className="qsm-textarea"
+              />
+            </div>
 
               <label className="form-label">
                 Correct Answer
