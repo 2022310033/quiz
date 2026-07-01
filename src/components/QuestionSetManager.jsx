@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
+
 import { useNavigate } from 'react-router-dom'
+
 import { useLocation } from 'react-router-dom'
+
 import {
   getAllFolders,
   getAllSets,
@@ -8,7 +11,10 @@ import {
   createSet,
   updateSet,
   deleteSet,
+  updateFolder,
+  deleteFolder,
 } from '../utils/setManager'
+
 import './QuestionSetManager.css'
 
 function QuestionSetManager() {
@@ -31,6 +37,8 @@ function QuestionSetManager() {
 
   const [folderName, setFolderName] = useState('')
 
+  const [folderColor, setFolderColor] = useState('#3b82f6')
+
   const [showForm, setShowForm] = useState(false)
 
   const [editingId, setEditingId] = useState(null)
@@ -44,6 +52,11 @@ function QuestionSetManager() {
     description: '',
     folderId: '',
   })
+
+// folder edit =
+const [editingFolderId, setEditingFolderId] = useState(null)
+const [editingFolderName, setEditingFolderName] = useState('')
+const [editingFolderColor, setEditingFolderColor] = useState('#3b82f6')
 
   // (initial load moved below with location handling) (RESOURCE FUNCTIONS BELOW TO LOAD DATA)
   // This loadSets is called in places to refresh data
@@ -96,6 +109,64 @@ function QuestionSetManager() {
       setStatus('idle')
     }
   }
+
+  const startEditFolder = (folder) => {
+  setEditingFolderId(folder.id)
+  setEditingFolderName(folder.name || '')
+  setEditingFolderColor(folder.color || '#3b82f6')
+  setFolderError('')
+}
+
+const cancelFolderEdit = () => {
+  setEditingFolderId(null)
+  setEditingFolderColor('#3b82f6')
+  setEditingFolderName('')
+  setFolderError('')
+}
+
+const handleUpdateFolder = async (event) => {
+  event.preventDefault()
+  setFolderError('')
+
+  if (!editingFolderName.trim()) {
+    setFolderError('Folder name is required')
+    return
+  }
+
+  try {
+    await updateFolder(editingFolderId, editingFolderName, editingFolderColor)
+    setEditingFolderId(null)
+    setEditingFolderName('')
+    setEditingFolderColor('#3b82f6')
+    await loadSets()
+  } catch (err) {
+    setFolderError(err instanceof Error ? err.message : 'Failed to update folder')
+  }
+}
+
+const handleDeleteFolder = async (folderId) => {
+  const folder = folders.find((item) => item.id === folderId)
+  const count = getFolderSetCount(folderId)
+
+  const confirmed = window.confirm(
+    `Delete "${folder?.name || 'this folder'}" and move ${count} set(s) to Unsorted?`
+  )
+
+  if (!confirmed) return
+
+  setStatus('loading')
+  try {
+    await deleteFolder(folderId)
+    await loadSets()
+    if (activeFolderId === folderId) {
+      setActiveFolderId(null)
+    }
+  } catch (err) {
+    setFolderError(err instanceof Error ? err.message : 'Failed to delete folder')
+    setStatus('idle')
+  }
+}
+
 
   const startEdit = (set) => {
     setEditingId(set.id)
@@ -175,8 +246,9 @@ function QuestionSetManager() {
     }
 
     try {
-      const folder = await createFolder(folderName)
+      const folder = await createFolder(folderName, folderColor)
       setFolderName('')
+      setFolderColor('#3b82f6')
       await loadSets()
       setActiveFolderId(folder.id)
     } catch (err) {
@@ -247,6 +319,14 @@ function QuestionSetManager() {
             <input className="qsm-input" value={folderName} onChange={(event) => setFolderName(event.target.value)}
               placeholder="New folder name"/>
 
+            <input
+              type="color"
+              value={folderColor}
+              onChange={(event) => setFolderColor(event.target.value)}
+              className="qsm-color-picker"
+              title="Choose folder color"
+            />
+
             <button type="submit" className="btn btn-primary">Create Folder</button>
           </form>
           {/* closing of form to handle input for creating a new folder */}
@@ -256,19 +336,49 @@ function QuestionSetManager() {
 
           {/* Folder from the useEffect are loaded here */}
           <div className="qsm-folder-list qsm-folder-list-vertical">
-
             {folders.map((folder) => (
+              <div
+                key={folder.id}
+                className="qsm-folder-row"
+                style={{
+                  borderLeftColor: folder.color || '#3b82f6',
+                }}
+              >
+                {editingFolderId === folder.id ? (
+                  <form onSubmit={handleUpdateFolder} className="qsm-folder-edit-form">
+                    <input
+                      className="qsm-input"
+                      value={editingFolderName}
+                      onChange={(event) => setEditingFolderName(event.target.value)}
+                      placeholder="Folder name"
+                    />
+                    <input
+                      type="color"
+                      value={editingFolderColor}
+                      onChange={(event) => setEditingFolderColor(event.target.value)}
+                      className="qsm-color-picker"
+                      title="Choose folder color"
+                    />
+                    <button type="button" onClick={cancelFolderEdit} className="btn qsm-button-small qsm-button-delete">Cancel</button>
+                    <button type="submit" className="btn qsm-button-small">Save</button>
+                  </form>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => openFolder(folder.id)} className="qsm-folder-main">
+                      <span className="qsm-folder-name">{folder.name}</span>
+                      <span className="qsm-folder-count">{getFolderSetCount(folder.id)} sets</span>
+                    </button>
 
-              <button key={folder.id} type="button" className="qsm-folder-row"
-
-                onClick={() => openFolder(folder.id)}>
-
-                <span>{folder.name}</span>
-
-                <span className="qsm-folder-count">{getFolderSetCount(folder.id)} sets</span>
-
-              </button>
+                    <div className="qsm-folder-actions">
+                      <button type="button" onClick={() => startEditFolder(folder)} className="btn qsm-button-small">Edit</button>
+                      <button type="button" onClick={() => handleDeleteFolder(folder.id)} className="btn qsm-button-small qsm-button-delete">Delete</button>
+                    </div>
+                  </>
+                )}
+              </div>
             ))}
+
+
 
             <button type="button" className="qsm-folder-row"
               onClick={() => openFolder('unsorted')}>

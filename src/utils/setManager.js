@@ -43,16 +43,17 @@ export async function getAllFolders(forceRefresh = false) {
 /**
  * Create a new folder
  */
-export async function createFolder(name) {
+export async function createFolder(name, color = '#3b82f6') {
   try {
     const trimmedName = name.trim()
     const docRef = await addDoc(collection(db, 'folders'), {
       name: trimmedName,
+      color,
       createdAt: serverTimestamp(),
     })
 
     cachedFolders = null
-    return { id: docRef.id, name: trimmedName }
+    return { id: docRef.id, name: trimmedName, color }
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to create folder')
   }
@@ -366,6 +367,7 @@ export async function deleteQuestion(questionId, setId) {
 /**
  * Update the question count on a set
  */
+
 export async function updateSetQuestionCount(setId) {
   try {
     const snapshot = await getDocs(
@@ -380,5 +382,40 @@ export async function updateSetQuestionCount(setId) {
     cachedSets = null
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to update question count')
+  }
+}
+
+
+// folder related utilities
+export async function updateFolder(folderId, name, color = '#3b82f6') {
+  try {
+    const trimmedName = name.trim()
+    const ref = doc(db, 'folders', folderId)
+    await updateDoc(ref, { name: trimmedName, color })
+    cachedFolders = null
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to update folder')
+  }
+}
+
+export async function deleteFolder(folderId) {
+  try {
+    const setsSnapshot = await getDocs(
+      query(collection(db, 'questionSets'), where('folderId', '==', folderId))
+    )
+
+    for (const docSnap of setsSnapshot.docs) {
+      await updateDoc(doc(db, 'questionSets', docSnap.id), {
+        folderId: '',
+      })
+    }
+
+    const ref = doc(db, 'folders', folderId)
+    await deleteDoc(ref)
+
+    cachedFolders = null
+    cachedSets = null
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to delete folder')
   }
 }

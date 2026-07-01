@@ -1,0 +1,139 @@
+.feed-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feed-scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feed-top-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0 auto 1rem;
+  height: 100px;
+  width: 100%;
+  max-width: 900px;
+  background-color: #f8fafc;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+}
+
+.pfp {
+  height: 100%;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 50%;
+}
+
+.feed-top-container img {
+  border-radius: 6%;
+  object-fit: cover;
+}
+
+.greetings{
+  height: 100%;
+  flex: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 50%;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.feed-bottom-container{
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  margin: 0 auto 1rem;
+  min-height: 140px;
+  width: 100%;
+  max-width: 900px;
+  background-color: #f8fafc;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.subject-name{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0;
+}
+
+.subject-name h2 {
+  margin: 0 0 1rem;
+}
+
+
+.content{
+  perspective: 1000px;
+  display: flex;
+  width: 100%;
+  min-height: 200px;
+  cursor: pointer;
+}
+
+.content-inner {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  transition: transform 0.6s ease;
+  transform-style: preserve-3d;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+}
+
+.content.flipped .content-inner {
+  transform: rotateY(180deg);
+}
+
+.content-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: #e2e8f0;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.content-back {
+  transform: rotateY(180deg);
+}
+
+.feed-status {
+  margin: 0 auto;
+  max-width: 900px;
+  color: #0f172a;
+}
+
+.feed-error {
+  color: #b91c1c;
+}
+
