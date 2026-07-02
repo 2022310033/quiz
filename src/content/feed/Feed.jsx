@@ -12,6 +12,7 @@ export default function Feed() {
 
     const [questions, setQuestions] = useState([])
     const [sets, setSets] = useState([])
+
     const [shuffledQuestions, setShuffledQuestions] = useState([])
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
@@ -23,6 +24,7 @@ export default function Feed() {
     const [flippedIds, setFlippedIds] = useState([])
 
     const shuffleArray = (items) => {
+
         const shuffled = [...items]
 
         for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -52,9 +54,13 @@ export default function Feed() {
             setShuffledQuestions(shuffled)
             setSets(setData)
             setHasMore(shuffled.length > PAGE_SIZE)
+
         } catch (err) {
+
             setError(err instanceof Error ? err.message : 'Failed to load questions.')
+
         } finally {
+
             setLoading(false)
             setLoadingMore(false)
         }
@@ -95,6 +101,7 @@ export default function Feed() {
 
 
 // rendering of display here
+
 return (
         <div className="feed-container">
             {/* Top section of the feed */}

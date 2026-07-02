@@ -362,20 +362,23 @@ function Quiz() {
 
   return (
     <section className="page panel">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <div className="header">
         {selectedSetId && (
           <button
             type="button"
             className="qsm-button-cancel"
             onClick={() => {
               navigate('/', { state: { activeFolderId: fromFolderId } })
-            }}
-          >
+            }}>
             Back
           </button>
         )}
+        </div>
         <h1 style={{ margin: 0 }}>Quiz Manager</h1>
-      </div>
+      
+
+
+
       <p className="section-subtitle">Add, edit, or delete questions</p>
 
       {/* Set Selector */}
@@ -470,6 +473,7 @@ A. Option A
 B. Option B
 C. Option C
 D. Option D
+Notes: Optional note or explanation here.
 Answer: B`}
             </pre>
 

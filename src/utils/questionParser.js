@@ -54,7 +54,7 @@ export function parseQuestionsFromText(text) {
     const aMatch = block.match(/A\.\s*(.+?)(?=\s*B\.)/s)
     const bMatch = block.match(/B\.\s*(.+?)(?=\s*C\.)/s)
     const cMatch = block.match(/C\.\s*(.+?)(?=\s*D\.)/s)
-    const dMatch = block.match(/D\.\s*(.+?)(?=\s*Answer|$)/s)
+    const dMatch = block.match(/D\.\s*(.+?)(?=\s*(?:Note|Notes)\s*:|\s*Answer\s*:|$)/s)
 
     question.letterA = aMatch ? aMatch[1].trim() : ''
     question.letterB = bMatch ? bMatch[1].trim() : ''
@@ -62,6 +62,13 @@ export function parseQuestionsFromText(text) {
     question.letterD = dMatch ? dMatch[1].trim() : ''
 
     console.log(`✅ Options: A="${question.letterA}", B="${question.letterB}", C="${question.letterC}", D="${question.letterD}"`)
+
+    // Extract optional notes field
+    const notesMatch = block.match(/(?:^|\n)\s*(?:Note|Notes)\s*:\s*(.+?)(?=\s*(?:Answer\s*:|$))/is)
+    question.notes = notesMatch ? notesMatch[1].trim() : ''
+    if (question.notes) {
+      console.log(`✅ Notes: "${question.notes}"`)
+    }
 
     // Extract answer
     const answerMatch = block.match(/Answer\s*:\s*([A-D])/i)

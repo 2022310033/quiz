@@ -522,3 +522,9 @@
     width: 100%;
   }
 }
+
+.header{
+  display: flex;
+  justify-content: start;
+  align-items: center;
+}
