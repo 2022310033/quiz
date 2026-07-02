@@ -279,6 +279,14 @@ function Quiz() {
     }
   }
 
+  const handlePreviewNotesChange = (index, value) => {
+    setPreviewQuestions((prev) =>
+      prev.map((question, questionIndex) =>
+        questionIndex === index ? { ...question, notes: value } : question
+      )
+    )
+  }
+
   const handleBulkUpload = async () => {
     if (!selectedSetId) {
       setUploadError('Please select a question set first.')
@@ -299,6 +307,7 @@ function Quiz() {
           letterC: q.letterC.trim(),
           letterD: q.letterD.trim(),
           correctAnswer: q.correctAnswer,
+          notes: q.notes?.trim() ?? '',
         })
         setUploadProgress(((i + 1) / previewQuestions.length) * 100)
       }
@@ -491,6 +500,16 @@ Answer: B`}
                       <div className="option-text">C. {q.letterC}</div>
                       <div className="option-text">D. {q.letterD}</div>
                       <div className="correct-answer">Answer: {q.correctAnswer}</div>
+                      <label className="qsm-label" style={{ marginTop: '0.75rem' }}>
+                        Notes <span className="qsm-label-optional">(optional)</span>
+                      </label>
+                      <textarea
+                        className="qsm-textarea"
+                        value={q.notes ?? ''}
+                        onChange={(event) => handlePreviewNotesChange(idx, event.target.value)}
+                        placeholder="Add notes or explanation for this question"
+                        rows="3"
+                      />
                     </div>
                   ))}
                 </div>
@@ -650,6 +669,16 @@ Answer: B`}
                 <div className="option-text">C. {q.letterC}</div>
                 <div className="option-text">D. {q.letterD}</div>
                 <div className="correct-answer">Answer: {q.correctAnswer}</div>
+                <label className="qsm-label" style={{ marginTop: '0.75rem' }}>
+                  Notes <span className="qsm-label-optional">(optional)</span>
+                </label>
+                <textarea
+                  className="qsm-textarea"
+                  value={q.notes ?? ''}
+                  onChange={(event) => handlePreviewNotesChange(idx, event.target.value)}
+                  placeholder="Add notes or explanation for this question"
+                  rows="3"
+                />
               </div>
             ))}
           </div>
