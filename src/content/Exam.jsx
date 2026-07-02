@@ -531,7 +531,7 @@ function Exam() {
           </div>
 
           {showNotes && (
-            <div style={{ position: 'absolute', top: '0', right: '-260px', width: '240px', zIndex: 10 }}>
+            <div style={{ position: 'absolute', top: '0', right: '-249px', width: '200px', zIndex: 10 }}>
               <div style={{ border: '1px solid #cbd5e1', borderRadius: '16px', padding: '0.85rem', backgroundColor: '#f8fafc', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)' }}>
                 <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Notes</h4>
                 <div style={{ fontSize: '0.9rem', lineHeight: '1.5', minHeight: '5rem' }}>
