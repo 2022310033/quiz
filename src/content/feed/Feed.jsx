@@ -99,18 +99,28 @@ export default function Feed() {
         return matchedSet?.name || 'Unknown subject'
     }
 
+    const quotes = [
+        'Magsipag ka!',
+        'Ngayon ka pa ba tatamarin?',
+        'Every progress matters',
+        'Rest is a crucial part of the process',
+        'You are doing well! ',
+    ]
+
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)]
 
 // rendering of display here
 
 return (
         <div className="feed-container">
+            
             {/* Top section of the feed */}
             <div className="feed-top-container">
                 <div className="pfp">
                     <img src={profileImage} alt="Profile Picture" height="80" width="80" />
                 </div>
                 <div className='greetings'>
-                    Hello, Mikaella!
+                    Hello, Mikaella! {randomQuote}
                 </div>
             </div>
 

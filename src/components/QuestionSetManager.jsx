@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -13,6 +13,7 @@ import {
   deleteSet,
   updateFolder,
   deleteFolder,
+  reorderFolders,
 } from '../utils/setManager'
 
 import './QuestionSetManager.css'
@@ -57,6 +58,24 @@ function QuestionSetManager() {
 const [editingFolderId, setEditingFolderId] = useState(null)
 const [editingFolderName, setEditingFolderName] = useState('')
 const [editingFolderColor, setEditingFolderColor] = useState('#3b82f6')
+const [draggedFolderId, setDraggedFolderId] = useState(null)
+const [dragOverFolderId, setDragOverFolderId] = useState(null)
+const [dragInsertAfter, setDragInsertAfter] = useState(false)
+
+const getReorderedFolders = (sourceFolders, draggedId, targetId, insertAfter = false) => {
+  const currentOrder = sourceFolders.filter((folder) => folder.id !== draggedId)
+  const draggedFolder = sourceFolders.find((folder) => folder.id === draggedId)
+
+  if (!draggedFolder) return sourceFolders
+
+  const targetIndex = currentOrder.findIndex((folder) => folder.id === targetId)
+  if (targetIndex === -1) return sourceFolders
+
+  const nextOrder = [...currentOrder]
+  nextOrder.splice(insertAfter ? targetIndex + 1 : targetIndex, 0, draggedFolder)
+
+  return nextOrder
+}
 
   // (initial load moved below with location handling) (RESOURCE FUNCTIONS BELOW TO LOAD DATA)
   // This loadSets is called in places to refresh data
@@ -165,6 +184,94 @@ const handleDeleteFolder = async (folderId) => {
     setFolderError(err instanceof Error ? err.message : 'Failed to delete folder')
     setStatus('idle')
   }
+}
+
+const handleFolderDragStart = (folderId) => (event) => {
+  setDraggedFolderId(folderId)
+  setDragOverFolderId(null)
+  setDragInsertAfter(false)
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', folderId)
+
+  const dragImage = event.currentTarget.closest('.qsm-folder-row')
+  if (dragImage) {
+    event.dataTransfer.setDragImage(dragImage, 24, dragImage.offsetHeight / 2)
+  }
+}
+
+const handleFolderDragOver = (folderId) => (event) => {
+  if (!draggedFolderId || draggedFolderId === folderId) return
+
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+
+  if (dragOverFolderId !== folderId) {
+    setDragOverFolderId(folderId)
+  }
+
+  const targetBounds = event.currentTarget.getBoundingClientRect()
+  const insertAfter = event.clientY > targetBounds.top + targetBounds.height / 2
+  setDragInsertAfter(insertAfter)
+}
+
+const commitFolderDrop = async (folderId, insertAfter) => {
+  if (!draggedFolderId || draggedFolderId === folderId) {
+    setDraggedFolderId(null)
+    setDragOverFolderId(null)
+    setDragInsertAfter(false)
+    return
+  }
+
+  const nextOrder = getReorderedFolders(folders, draggedFolderId, folderId, insertAfter)
+
+  if (nextOrder === folders) {
+    setDraggedFolderId(null)
+    setDragOverFolderId(null)
+    setDragInsertAfter(false)
+    return
+  }
+
+  const previousFolders = folders
+
+  try {
+    setFolders(nextOrder)
+    await reorderFolders(nextOrder.map((folder) => folder.id))
+  } catch (err) {
+    setFolders(previousFolders)
+    setFolderError(err instanceof Error ? err.message : 'Failed to reorder folders')
+  } finally {
+    setDraggedFolderId(null)
+    setDragOverFolderId(null)
+    setDragInsertAfter(false)
+  }
+}
+
+const handleFolderDrop = (folderId) => async (event) => {
+  event.preventDefault()
+
+  const targetBounds = event.currentTarget.getBoundingClientRect()
+  const insertAfter = event.clientY > targetBounds.top + targetBounds.height / 2
+  await commitFolderDrop(folderId, insertAfter)
+}
+
+const handlePlaceholderDragOver = (folderId, insertAfter) => (event) => {
+  if (!draggedFolderId || draggedFolderId === folderId) return
+
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+  setDragOverFolderId(folderId)
+  setDragInsertAfter(insertAfter)
+}
+
+const handlePlaceholderDrop = (folderId, insertAfter) => async (event) => {
+  event.preventDefault()
+  await commitFolderDrop(folderId, insertAfter)
+}
+
+const handleFolderDragEnd = () => {
+  setDraggedFolderId(null)
+  setDragOverFolderId(null)
+  setDragInsertAfter(false)
 }
 
 
@@ -296,7 +403,6 @@ const handleDeleteFolder = async (folderId) => {
     }
   }, [])
 
-
   // Displaying data and UI below
 
   return (
@@ -336,14 +442,35 @@ const handleDeleteFolder = async (folderId) => {
 
           {/* Folder from the useEffect are loaded here */}
           <div className="qsm-folder-list qsm-folder-list-vertical">
-            {folders.map((folder) => (
-              <div
-                key={folder.id}
-                className="qsm-folder-row"
-                style={{
-                  borderLeftColor: folder.color || '#3b82f6',
-                }}
-              >
+            {folders.map((folder) => {
+              const isDragged = folder.id === draggedFolderId
+              const showDropPlaceholder = draggedFolderId && dragOverFolderId === folder.id && !isDragged
+              const draggedFolder = folders.find((item) => item.id === draggedFolderId)
+              const renderPlaceholder = (insertAfter) => (
+                <div
+                  className="qsm-folder-drag-placeholder"
+                  style={{
+                    borderLeftColor: draggedFolder?.color || '#3b82f6',
+                  }}
+                  onDragOver={handlePlaceholderDragOver(folder.id, insertAfter)}
+                  onDrop={handlePlaceholderDrop(folder.id, insertAfter)}
+                  aria-hidden="true"
+                >
+                  <div className="qsm-folder-placeholder-shadow" />
+                </div>
+              )
+
+              return (
+                <Fragment key={folder.id}>
+                  {showDropPlaceholder && !dragInsertAfter && renderPlaceholder(false)}
+                  <div
+                    className={`qsm-folder-row ${isDragged ? 'dragging' : ''} ${showDropPlaceholder ? 'drop-target' : ''}`}
+                    style={{
+                      borderLeftColor: folder.color || '#3b82f6',
+                    }}
+                    onDragOver={handleFolderDragOver(folder.id)}
+                    onDrop={handleFolderDrop(folder.id)}
+                  >
                 {editingFolderId === folder.id ? (
                   <form onSubmit={handleUpdateFolder} className="qsm-folder-edit-form">
                     <input
@@ -364,6 +491,18 @@ const handleDeleteFolder = async (folderId) => {
                   </form>
                 ) : (
                   <>
+                    <div
+                      className="qsm-folder-handle"
+                      draggable={!editingFolderId}
+                      onDragStart={handleFolderDragStart(folder.id)}
+                      onDragEnd={handleFolderDragEnd}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      title="Drag to reorder"
+                      aria-label={`Drag ${folder.name} to reorder`}
+                    >
+                      <span className="qsm-folder-handle-icon">⋮⋮</span>
+                    </div>
+
                     <button type="button" onClick={() => openFolder(folder.id)} className="qsm-folder-main">
                       <span className="qsm-folder-name">{folder.name}</span>
                       <span className="qsm-folder-count">{getFolderSetCount(folder.id)} sets</span>
@@ -376,11 +515,14 @@ const handleDeleteFolder = async (folderId) => {
                   </>
                 )}
               </div>
-            ))}
+              {showDropPlaceholder && dragInsertAfter && renderPlaceholder(true)}
+            </Fragment>
+          );
+})}
 
 
 
-            <button type="button" className="qsm-folder-row"
+            <button type="button" className="qsm-folder-row qsm-folder-row-unsorted"
               onClick={() => openFolder('unsorted')}>
               <span>Unsorted</span>
               <span className="qsm-folder-count">{getFolderSetCount('unsorted')} sets</span>
