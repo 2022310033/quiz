@@ -14,6 +14,10 @@ import {
 } from '../utils/setManager'
 import '../components/QuestionSetManager.css'
 
+
+//save exam history
+import { saveExamHistory } from './history/historyManager'
+
 function Exam() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -47,6 +51,17 @@ function Exam() {
   const [timePerQuestion, setTimePerQuestion] = useState(30)
   const [running, setRunning] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
+
+  const [saveStatus, setSaveStatus] = useState('')
+
+  const showSaveStatus = (message) => {
+
+    setSaveStatus(message)
+
+    setTimeout(() => {
+      setSaveStatus('')
+    }, 2500)
+  }
 
   const currentQuestion = useMemo(
     () => (questions.length > 0 ? questions[currentIndex] : null),
@@ -372,10 +387,40 @@ function Exam() {
     setTimeout(nextQuestion, 1500)
   }
 
+  const getExamSubject = () => {
+    const matchingFolder = folders.find((folder) => folder.id === currentSet?.folderId)
+    if (matchingFolder?.name) return matchingFolder.name
+    if (currentSet?.name) return currentSet.name
+    return 'Uncategorized'
+  }
+
+  // Save exam history when the exam is completed
+  const handleFinishExam = async () => {
+    const examData = {
+      setId: selectedSetId,
+      setName: currentSet?.name || 'Untitled Exam',
+      subject: getExamSubject(),
+      score,
+      totalQuestions: questions.length,
+    percentage: questions.length
+    ? Math.round((score / questions.length) * 100)
+    : 0,
+    finishedAt: new Date(),
+  }
+  try {
+    await saveExamHistory(examData)
+    showSaveStatus('Exam history saved successfully.')
+  } catch (error) {
+    showSaveStatus('Failed to save exam history.')
+  }
+}
+
   return (
+
     <section className="page panel">
 
 <div style={{ marginBottom: '1rem' }}>
+  
   {selectedSetId && (
     <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
       <button
@@ -545,14 +590,15 @@ function Exam() {
 
       {completed && (
         <div className="exam-result">
+
           <h2>Exam finished</h2>
-          <p>
-            Score: {score} / {questions.length}
-          </p>
+          <p>Score: {score} / {questions.length}</p>
+
           <div className="action-row">
             <button type="button" className="btn btn-primary" onClick={startExam}>
               Take Again
             </button>
+
             <button
               type="button"
               className="btn"
@@ -561,13 +607,33 @@ function Exam() {
                 setCompleted(false)
                 setFeedback('')
                 setRunning(false)
-              }}
-            >
+              }}>
               Back to Setup
+            </button>
+
+            <button type="button" className="btn" onClick={handleFinishExam}>
+              Save to History
             </button>
           </div>
         </div>
       )}
+
+      {saveStatus && (
+              <div
+                style={{
+                  marginTop: '0.75rem',
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#dcfce7',
+                  color: '#166534',
+                  borderRadius: '999px',
+                  fontSize: '0.9rem',
+                  display: 'inline-block',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+                }}
+              >
+                {saveStatus}
+              </div>
+        )}
     </section>
   )
 }

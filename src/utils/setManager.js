@@ -9,6 +9,7 @@ import {
   orderBy,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from '../firebase/firebase'
 
@@ -31,8 +32,19 @@ export async function getAllFolders(forceRefresh = false) {
   }
 
   try {
-    const snapshot = await getDocs(query(collection(db, 'folders'), orderBy('name')))
-    const folders = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const snapshot = await getDocs(collection(db, 'folders'))
+    const folders = snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((left, right) => {
+        const leftOrder = left.sortOrder ?? left.createdAt?.toMillis?.() ?? 0
+        const rightOrder = right.sortOrder ?? right.createdAt?.toMillis?.() ?? 0
+
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder
+        }
+
+        return (left.name || '').localeCompare(right.name || '')
+      })
     cachedFolders = folders
     return folders
   } catch (err) {
@@ -49,11 +61,12 @@ export async function createFolder(name, color = '#3b82f6') {
     const docRef = await addDoc(collection(db, 'folders'), {
       name: trimmedName,
       color,
+      sortOrder: Date.now(),
       createdAt: serverTimestamp(),
     })
 
     cachedFolders = null
-    return { id: docRef.id, name: trimmedName, color }
+    return { id: docRef.id, name: trimmedName, color, sortOrder: Date.now() }
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to create folder')
   }
@@ -417,5 +430,23 @@ export async function deleteFolder(folderId) {
     cachedSets = null
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to delete folder')
+  }
+}
+
+export async function reorderFolders(folderIds) {
+  try {
+    const batch = writeBatch(db)
+
+    folderIds.forEach((folderId, index) => {
+      batch.update(doc(db, 'folders', folderId), {
+        sortOrder: index,
+      })
+    })
+
+    await batch.commit()
+
+    cachedFolders = null
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : 'Failed to reorder folders')
   }
 }
