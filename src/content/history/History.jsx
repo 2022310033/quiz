@@ -55,8 +55,8 @@ return (
                         {historylist.map((item) => (
                             <tr>
                                 <td>{item.subject}</td>
-                                <td>{item.score}</td>
-                                <td>{item.percentage}</td>
+                                <td>{item.score}/{item.totalQuestions}</td>
+                                <td>{item.percentage}%</td>
                                 <td>{formatDate(item.finishedAt)}</td>
                                 <td><button type="button" onClick={() => handleDelete(item.id)}>
                                     <i className="fa-solid fa-trash"></i></button>
