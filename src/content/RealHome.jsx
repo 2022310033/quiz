@@ -56,9 +56,12 @@ const Quotes = [
 
 
 function CountdownTimerWithThemes() {
+
   const [currentTheme, setCurrentTheme] = useState('purple');
   const [targetDate] = useState(new Date('2026-09-20T23:59:59'));
+  
   const [showThemeSelector, setShowThemeSelector] = useState(false);
+
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -123,8 +126,7 @@ function CountdownTimerWithThemes() {
                       setCurrentTheme(themeKey);
                       setShowThemeSelector(false);
                     }}
-                    className={`countdown-dropdown-button ${currentTheme === themeKey ? 'active' : ''}`}
-                  >
+                    className={`countdown-dropdown-button ${currentTheme === themeKey ? 'active' : ''}`}>
                     <div className="theme-item-label">
                       <span className="theme-dot" style={{ backgroundColor: themeItem.accent }}></span>
                       <span>{themeItem.name}</span>

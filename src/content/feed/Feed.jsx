@@ -35,6 +35,15 @@ export default function Feed() {
         return shuffled
     }
 
+    const buildShuffledChoices = (question) => {
+        const choices = ['A', 'B', 'C', 'D'].map((letter) => ({
+            letter,
+            text: question?.[`letter${letter}`] || '',
+        }))
+
+        return shuffleArray(choices)
+    }
+
     const loadQuestions = async () => {
 
         setLoading(true)
@@ -47,7 +56,14 @@ export default function Feed() {
             ])
 
             const shuffled = shuffleArray(
-                questionSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+                questionSnapshot.docs.map((doc) => {
+                    const question = { id: doc.id, ...doc.data() }
+
+                    return {
+                        ...question,
+                        shuffledChoices: buildShuffledChoices(question),
+                    }
+                })
             )
 
             setQuestions(shuffled)
@@ -169,13 +185,13 @@ return (
 
                                         <p>{question.question}</p>
 
-                                        <input
-                                            type="text"
-                                            placeholder="Your answer..."
-                                            onClick={(event) => event.stopPropagation()}
-                                            onMouseDown={(event) => event.stopPropagation()}
-                                            onKeyDown={(event) => event.stopPropagation()}
-                                        />
+                                        <div className="choice-list" onClick={(event) => event.stopPropagation()}>
+                                            {question.shuffledChoices?.map((choice) => (
+                                                <div className="choice-item" key={`${question.id}-${choice.letter}`}>
+                                                    <span className="choice-text">{choice.text}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                         
                                     </div>
 

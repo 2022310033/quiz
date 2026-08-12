@@ -40,6 +40,7 @@ function Exam() {
   const [selected, setSelected] = useState('')
   const [feedback, setFeedback] = useState('')
   const [feedbackType, setFeedbackType] = useState('')
+  const [questionAnswered, setQuestionAnswered] = useState(false)
   const [score, setScore] = useState(0)
   const [completed, setCompleted] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
@@ -262,6 +263,7 @@ function Exam() {
       setSelected('')
       setFeedback('')
       setFeedbackType('')
+      setQuestionAnswered(false)
       setSecondsLeft(timePerQuestion)
       setRunning(true)
       setReviewMode(true)
@@ -339,6 +341,7 @@ function Exam() {
     setSelected('')
     setFeedback('')
     setFeedbackType('')
+    setQuestionAnswered(false)
     setSecondsLeft(timePerQuestion)
     setRunning(true)
   }
@@ -354,21 +357,22 @@ function Exam() {
       setSelected('')
       setFeedback('')
       setFeedbackType('')
+      setQuestionAnswered(false)
       setSecondsLeft(timePerQuestion)
       setRunning(true)
     }
   }
 
   const handleAnswer = (answer) => {
-    if (!currentQuestion || completed || !running) return
+    if (!currentQuestion || completed || !running || questionAnswered) return
 
     setRunning(false)
+    setQuestionAnswered(true)
 
     if (!answer) {
       saveIncorrectQuestion(currentQuestion)
       setFeedback(`Time's up! Correct answer: ${currentCorrectAnswer}`)
       setFeedbackType('error')
-      setTimeout(nextQuestion, 1500)
       return
     }
 
@@ -383,8 +387,6 @@ function Exam() {
       setFeedback(`Wrong. Correct answer: ${currentCorrectAnswer}`)
       setFeedbackType('error')
     }
-
-    setTimeout(nextQuestion, 1500)
   }
 
   const getExamSubject = () => {
@@ -396,6 +398,7 @@ function Exam() {
 
   // Save exam history when the exam is completed
   const handleFinishExam = async () => {
+    
     const examData = {
       setId: selectedSetId,
       setName: currentSet?.name || 'Untitled Exam',
@@ -415,7 +418,7 @@ function Exam() {
   }
 }
 
-  return (
+return (
 
     <section className="page panel">
 
@@ -459,6 +462,7 @@ function Exam() {
                 setSelectedSetId(e.target.value)
                 setHasStarted(false)
                 setCompleted(false)
+                setQuestionAnswered(false)
               }}
               style={{ width: '100%' }}
             >
@@ -488,6 +492,7 @@ function Exam() {
             setHasStarted(false)
             setCompleted(false)
             setFeedback('')
+            setQuestionAnswered(false)
             setRunning(false)
             loadQuestionsForSet(selectedSetId)
           }}>
@@ -542,7 +547,7 @@ function Exam() {
             <h2>{currentQuestion.question}</h2>
             <ul className="option-list">
               {shuffledAnswers.map((choice) => {
-                const answered = !running && feedback !== '' && (selected !== '' || feedback.startsWith("Time"))
+                const answered = questionAnswered
                 const isCorrect = choice.isCorrect
                 const isSelected = selected === choice.displayLetter
                 const statusClass = answered
@@ -559,7 +564,7 @@ function Exam() {
                       type="button"
                       className={`btn btn-option ${statusClass}`}
                       onClick={() => handleAnswer(choice.displayLetter)}
-                      disabled={!running}
+                      disabled={!running || questionAnswered}
                     >
                       {choice.displayLetter}. {choice.text}
                     </button>
@@ -568,23 +573,48 @@ function Exam() {
               })}
             </ul>
 
-            {feedback && (
-              <p className={`feedback-message ${feedbackType === 'success' ? 'feedback-success' : feedbackType === 'error' ? 'feedback-error' : ''}`}>
-                {feedback}
-              </p>
+            {questionAnswered && (
+              <div
+                style={{
+                  marginTop: '1rem',
+                  padding: '1rem',
+                  border: `1px solid ${feedbackType === 'success' ? '#86efac' : '#fca5a5'}`,
+                  borderRadius: '16px',
+                  backgroundColor: feedbackType === 'success' ? '#f0fdf4' : '#fef2f2',
+                  boxShadow: feedbackType === 'success'
+                    ? '0 20px 40px rgba(22, 101, 52, 0.12)'
+                    : '0 20px 40px rgba(153, 27, 27, 0.12)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                }}
+              >
+                <div style={{ fontWeight: '600', color: feedbackType === 'success' ? '#166534' : '#991b1b' }}>
+                  {feedback || `Correct answer: ${currentCorrectAnswer}`}
+                </div>
+
+                {showNotes && (
+                  <div
+                    style={{
+                      padding: '0.85rem',
+                      borderRadius: '12px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Notes</h4>
+                    <div style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
+                      {currentQuestion.notes ? currentQuestion.notes : 'No notes available for this question.'}
+                    </div>
+                  </div>
+                )}
+
+                <button type="button" className="btn btn-primary" onClick={nextQuestion}>
+                  Next Question
+                </button>
+              </div>
             )}
           </div>
-
-          {showNotes && (
-            <div style={{ position: 'absolute', top: '0', right: '-249px', width: '200px', zIndex: 10 }}>
-              <div style={{ border: '1px solid #cbd5e1', borderRadius: '16px', padding: '0.85rem', backgroundColor: '#f8fafc', boxShadow: '0 20px 40px rgba(15, 23, 42, 0.12)' }}>
-                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Notes</h4>
-                <div style={{ fontSize: '0.9rem', lineHeight: '1.5', minHeight: '5rem' }}>
-                  {currentQuestion.notes ? currentQuestion.notes : 'No notes available for this question.'}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -606,6 +636,7 @@ function Exam() {
                 setHasStarted(false)
                 setCompleted(false)
                 setFeedback('')
+                setQuestionAnswered(false)
                 setRunning(false)
               }}>
               Back to Setup
