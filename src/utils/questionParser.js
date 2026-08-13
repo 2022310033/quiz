@@ -1,4 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist'
+﻿import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 // Set up the worker
@@ -12,10 +12,16 @@ export async function extractTextFromPDF(file) {
   const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
   let text = ''
 
-  for (let i = 1; i <= pdf.numPages; i++) {
+  for (let i = 1; i <= pdf.numPages; i += 1) {
     const page = await pdf.getPage(i)
     const textContent = await page.getTextContent()
-    text += textContent.items.map((item) => item.str).join(' ') + '\n'
+    // Keep PDF line breaks. Besides producing cleaner questions, this prevents
+    // values such as "40." or "0.51" within a sentence from being treated as a
+    // new numbered question by the text parser.
+    text += textContent.items
+      .map((item) => `${item.str}${item.hasEOL ? '\n' : ' '}`)
+      .join('')
+      .trim() + '\n'
   }
 
   return text
@@ -26,68 +32,97 @@ export async function extractTextFromPDF(file) {
  */
 export function parseQuestionsFromText(text) {
   console.log('📄 Raw text input:', text)
-  
-  const questions = []
-  
-  // Split by question numbers (1., 2., 3., etc)
-  // This handles both newline-separated and space-separated content
-  const questionBlocks = text.split(/(?=\d+\.)/).filter(Boolean)
-  
-  console.log(`📦 Found ${questionBlocks.length} question blocks`)
-  console.log('📦 Question blocks:', questionBlocks)
 
-  for (const block of questionBlocks) {
-    console.log(`\n🔍 Processing block: "${block.substring(0, 100)}..."`)
-    
-    const question = {}
-    
-    // Extract question number and text
-    const qMatch = block.match(/^(\d+)\.\s*(.+?)(?=\s*[A-D]\.)/s)
-    if (!qMatch) {
-      console.log(`⚠️ Could not extract question`)
-      continue
-    }
-    question.question = qMatch[2].trim()
-    console.log(`✅ Question: "${question.question}"`)
+  try {
+    const cleanedText = String(text ?? '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s*\n\s*/g, '\n')
+      .trim()
 
-    // Extract options A, B, C, D
-    const aMatch = block.match(/A\.\s*(.+?)(?=\s*B\.)/s)
-    const bMatch = block.match(/B\.\s*(.+?)(?=\s*C\.)/s)
-    const cMatch = block.match(/C\.\s*(.+?)(?=\s*D\.)/s)
-    const dMatch = block.match(/D\.\s*(.+?)(?=\s*(?:Note|Notes)\s*:|\s*Answer\s*:|$)/s)
+    const normalizedText = cleanedText
+      .replace(/<PARSED TEXT FOR PAGE:[\s\S]*?>/gi, '\n')
+      // PDFs repeat this header on every page; remove it before attaching notes
+      // to their matching answers. The middle title differs by subject (PED8,
+      // PED9, etc.), so it must not be hard-coded to one document.
+      .replace(/PED\d+\s+POSTTEST\s*\|[^\n]*?\|\s*QUESTIONS\s+\d+\s*[-–]\s*\d+/gi, '\n')
+      .replace(/\bPage\s+\d+\b/gi, '\n')
 
-    question.letterA = aMatch ? aMatch[1].trim() : ''
-    question.letterB = bMatch ? bMatch[1].trim() : ''
-    question.letterC = cMatch ? cMatch[1].trim() : ''
-    question.letterD = dMatch ? dMatch[1].trim() : ''
+    const questions = []
 
-    console.log(`✅ Options: A="${question.letterA}", B="${question.letterB}", C="${question.letterC}", D="${question.letterD}"`)
-
-    // Extract optional notes field
-    const notesMatch = block.match(/(?:^|\n)\s*(?:Note|Notes)\s*:\s*(.+?)(?=\s*(?:Answer\s*:|$))/is)
-    question.notes = notesMatch ? notesMatch[1].trim() : ''
-    if (question.notes) {
-      console.log(`✅ Notes: "${question.notes}"`)
+    const qaPairs = []
+    const qaRegex = /(?:^|\n)\s*Answer\s*:\s*([A-D])\s*(?:\n|\s)+Notes?\s*:\s*([\s\S]*?)(?=(?:\n\s*Answer\s*:|\n\s*\d{1,3}\.\s|<PARSED TEXT FOR PAGE:|$))/gi
+    let qaMatch = qaRegex.exec(normalizedText)
+    while (qaMatch) {
+      qaPairs.push({
+        answer: qaMatch[1].toUpperCase(),
+        notes: qaMatch[2].replace(/\s+/g, ' ').trim(),
+      })
+      qaMatch = qaRegex.exec(normalizedText)
     }
 
-    // Extract answer
-    const answerMatch = block.match(/Answer\s*:\s*([A-D])/i)
-    question.correctAnswer = answerMatch ? answerMatch[1].toUpperCase() : 'A'
-    console.log(`✅ Answer: ${question.correctAnswer}`)
+    // Question numbers are printed at the beginning of a PDF line. Restricting
+    // matches to line starts avoids splitting on numbers used in the question
+    // text or answer choices (for example, "range of 40.").
+    const questionRegex = /(?:^|\n)\s*(\d{1,3})\.\s*([\s\S]*?)(?=(?:\n\s*\d{1,3}\.\s|\n\s*Answer\s*:|$))/g
+    let questionMatch = questionRegex.exec(normalizedText)
 
-    // Validate and add
-    if (question.question && question.letterA && question.letterB && question.letterC && question.letterD) {
-      questions.push(question)
-      console.log(`💾 Saved question`)
-    } else {
-      console.log(`❌ Incomplete question, skipping`)
+    const getOption = (letter, block) => {
+      const pattern = new RegExp(`(?:^|\\n)\\s*${letter}\\.\\s*([\\s\\S]*?)(?=(?:\\n\\s*[A-D]\\.\\s|$))`, 'i')
+      const match = block.match(pattern)
+      return match ? match[1].replace(/\s+/g, ' ').trim() : ''
     }
+
+    while (questionMatch) {
+      const parsedNumber = Number.parseInt(questionMatch[1], 10)
+      const block = questionMatch[2].trim()
+
+      // Remove trailing answer or notes text if OCR merged sections.
+      const safeBlock = block.split(/\bAnswer\s*:/i)[0].trim()
+
+      const questionTextMatch = safeBlock.match(/^([\s\S]*?)(?=\n\s*A\.\s|$)/i)
+      const questionText = questionTextMatch ? questionTextMatch[1].replace(/\s+/g, ' ').trim() : ''
+
+      const question = {
+        orderIndex: questions.length,
+        questionNumber: Number.isNaN(parsedNumber) ? questions.length + 1 : parsedNumber,
+        question: questionText,
+        letterA: getOption('A', safeBlock),
+        letterB: getOption('B', safeBlock),
+        letterC: getOption('C', safeBlock),
+        letterD: getOption('D', safeBlock),
+      }
+
+      const mappedQA = qaPairs[questions.length]
+      question.correctAnswer = mappedQA?.answer || 'A'
+      question.notes = mappedQA?.notes || ''
+
+      console.log(`\n🔍 Processing block for #${question.questionNumber}: "${safeBlock.substring(0, 120)}..."`)
+      console.log(`✅ Question: "${question.question}"`)
+      console.log(`✅ Options: A="${question.letterA}", B="${question.letterB}", C="${question.letterC}", D="${question.letterD}"`)
+      console.log(`✅ Answer: ${question.correctAnswer}`)
+      if (question.notes) {
+        console.log(`✅ Notes: "${question.notes}"`)
+      }
+
+      if (question.question && question.letterA && question.letterB && question.letterC && question.letterD) {
+        questions.push(question)
+        console.log('💾 Saved question')
+      } else {
+        console.log('❌ Incomplete question, skipping')
+      }
+
+      questionMatch = questionRegex.exec(normalizedText)
+    }
+
+    console.log(`\n📊 Total questions parsed: ${questions.length}`)
+    console.log('🎯 Final questions:', questions)
+
+    return questions
+  } catch (error) {
+    console.error('Question parsing failed:', error)
+    return []
   }
-
-  console.log(`\n📊 Total questions parsed: ${questions.length}`)
-  console.log('🎯 Final questions:', questions)
-
-  return questions
 }
 
 /**

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../firebase/firebase'
 import { getAllSets } from '../../utils/setManager'
+import Fact from './Fact'
 
 export default function Feed() {
 
@@ -215,6 +216,8 @@ return (
                     {loadingMore ? 'Loading more...' : 'Load more questions'}
                 </button>
             )}
+
+             <Fact />
         </div>
     )
 }

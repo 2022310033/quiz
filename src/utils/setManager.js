@@ -17,6 +17,56 @@ let cachedFolders = null
 let cachedSets = null
 const cachedQuestionsBySet = new Map()
 
+function getQuestionOrderValue(question) {
+  if (Number.isFinite(question.orderIndex)) {
+    return question.orderIndex
+  }
+
+  if (Number.isFinite(question.questionNumber)) {
+    return question.questionNumber
+  }
+
+  return Number.MAX_SAFE_INTEGER
+}
+
+async function backfillQuestionOrder(setId, questions) {
+  const needsBackfill = questions.filter(
+    (item) => !Number.isFinite(item.orderIndex) && !Number.isFinite(item.questionNumber)
+  )
+
+  if (needsBackfill.length === 0) {
+    return questions
+  }
+
+  const sortedForBackfill = [...questions].sort((a, b) => {
+    const timeA = a.createdAt?.toMillis?.() || 0
+    const timeB = b.createdAt?.toMillis?.() || 0
+
+    if (timeA !== timeB) {
+      return timeA - timeB
+    }
+
+    return (a.id || '').localeCompare(b.id || '')
+  })
+
+  const batch = writeBatch(db)
+
+  sortedForBackfill.forEach((item, index) => {
+    if (!Number.isFinite(item.orderIndex) && !Number.isFinite(item.questionNumber)) {
+      batch.update(doc(db, 'questions', item.id), {
+        orderIndex: index,
+        questionNumber: index + 1,
+      })
+      item.orderIndex = index
+      item.questionNumber = index + 1
+    }
+  })
+
+  await batch.commit()
+  cachedQuestionsBySet.delete(setId)
+  return questions
+}
+
 export function clearCache() {
   cachedFolders = null
   cachedSets = null
@@ -275,14 +325,25 @@ export async function getQuestionsBySet(setId, forceRefresh = false) {
 
     const questions = snapshot.docs
       .map((d) => ({ id: d.id, ...d.data() }))
+
+    const migratedQuestions = await backfillQuestionOrder(setId, questions)
+
+    const arrangedQuestions = migratedQuestions
       .sort((a, b) => {
+        const orderA = getQuestionOrderValue(a)
+        const orderB = getQuestionOrderValue(b)
+
+        if (orderA !== orderB) {
+          return orderA - orderB
+        }
+
         const timeA = a.createdAt?.toMillis?.() || 0
         const timeB = b.createdAt?.toMillis?.() || 0
-        return timeB - timeA
+        return timeA - timeB
       })
 
-    cachedQuestionsBySet.set(setId, questions)
-    return questions
+    cachedQuestionsBySet.set(setId, arrangedQuestions)
+    return arrangedQuestions
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : 'Failed to fetch questions')
   }
@@ -302,6 +363,11 @@ export async function addQuestionToSet(setId, questionData) {
       letterD: questionData.letterD,
       correctAnswer: questionData.correctAnswer,
       createdAt: serverTimestamp(),
+    }
+
+    if (Number.isInteger(questionData.orderIndex) || Number.isInteger(questionData.questionNumber)) {
+      payload.orderIndex = Number(questionData.orderIndex ?? questionData.questionNumber)
+      payload.questionNumber = Number(questionData.questionNumber ?? questionData.orderIndex)
     }
 
     if (questionData.notes != null) {

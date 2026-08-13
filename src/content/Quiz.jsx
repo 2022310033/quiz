@@ -307,6 +307,8 @@ function Quiz() {
           letterC: q.letterC.trim(),
           letterD: q.letterD.trim(),
           correctAnswer: q.correctAnswer,
+          orderIndex: Number.isInteger(q.orderIndex) ? q.orderIndex : i,
+          questionNumber: Number.isInteger(q.questionNumber) ? q.questionNumber : i + 1,
           notes: q.notes?.trim() ?? '',
         })
         setUploadProgress(((i + 1) / previewQuestions.length) * 100)
@@ -368,7 +370,7 @@ function Quiz() {
             type="button"
             className="qsm-button-cancel"
             onClick={() => {
-              navigate('/', { state: { activeFolderId: fromFolderId } })
+              navigate('/sets', { state: { activeFolderId: fromFolderId } })
             }}>
             Back
           </button>
@@ -724,9 +726,9 @@ Answer: B`}
         <div className="questions-section">
           <h2>Questions</h2>
           <ul className="questions-list">
-            {questions.map((q) => (
+            {questions.map((q, index) => (
               <li key={q.id} className="question-card">
-                <strong>{q.question}</strong>
+                <strong>{index + 1}. {q.question}</strong>
                 <div className="option-text">A. {q.letterA}</div>
                 <div className="option-text">B. {q.letterB}</div>
                 <div className="option-text">C. {q.letterC}</div>
