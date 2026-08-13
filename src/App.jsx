@@ -17,7 +17,8 @@ function App() {
 
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<RealHome />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<RealHome />} />
           <Route path="/sets" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/history" element={<History />} />
@@ -25,7 +26,7 @@ function App() {
           <Route path="/exam" element={<Exam />} />
           <Route path="/feed" element={<Feed />} />
           {/* Redirect any unknown routes to home */}
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </main>
 
