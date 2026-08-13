@@ -189,3 +189,39 @@
   margin: 0.5rem 0 1rem;
 }
 
+.random-fact-float {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+
+  width: 180px;
+  min-height: 150px;
+  padding: 16px;
+  border: none;
+  border-radius: 18px;
+
+  background: #0f172a;
+  color: white;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35);
+
+  font: inherit;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.random-fact-float:hover {
+  background: #0f172a;
+  transform: translateY(-4px);
+}
+
+@media (max-width: 640px) {
+  .random-fact-float {
+    right: 16px;
+    bottom: 16px;
+    width: 180px;
+    min-height: 110px;
+    font-size: 0.85rem;
+  }
+}

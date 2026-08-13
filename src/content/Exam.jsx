@@ -429,7 +429,7 @@ return (
       <button
         type="button"
         className="qsm-button-cancel"
-        onClick={() => navigate('/', { state: { activeFolderId: fromFolderId } })}
+        onClick={() => navigate('/sets', { state: { activeFolderId: fromFolderId } })}
       >
         Back
       </button>
