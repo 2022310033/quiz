@@ -43,9 +43,9 @@ export function parseQuestionsFromText(text) {
     const normalizedText = cleanedText
       .replace(/<PARSED TEXT FOR PAGE:[\s\S]*?>/gi, '\n')
       // PDFs repeat this header on every page; remove it before attaching notes
-      // to their matching answers. The middle title differs by subject (PED8,
-      // PED9, etc.), so it must not be hard-coded to one document.
-      .replace(/PED\d+\s+POSTTEST\s*\|[^\n]*?\|\s*QUESTIONS\s+\d+\s*[-–]\s*\d+/gi, '\n')
+      // to their matching answers. Match the shared course-code/header structure
+      // instead of a particular prefix (for example, PED8 or GED8).
+      .replace(/\b[A-Z][A-Z0-9_-]*\d[A-Z0-9_-]*\s+POSTTEST\s*\|[^\n]*?\|\s*QUESTIONS\s+\d+\s*[-–]\s*\d+/gi, '\n')
       .replace(/\bPage\s+\d+\b/gi, '\n')
 
     const questions = []
