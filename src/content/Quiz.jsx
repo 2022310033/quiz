@@ -71,6 +71,14 @@ function Quiz() {
       const [data, folderData] = await Promise.all([getAllSets(), getAllFolders()])
       setSets(data)
       setFolders(folderData)
+
+      // When Quiz is opened directly, select a usable set so imports and the
+      // question list are not left in an unselected state.
+      if (!requestedSetId && !selectedSetId && data.length > 0) {
+        const firstStandardSet =
+          data.find((set) => set.type !== 'retake' && !set.name.endsWith(' - Retake')) ?? data[0]
+        setSelectedSetId(firstStandardSet.id)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sets')
     } finally {
@@ -317,6 +325,9 @@ function Quiz() {
       setUploadStatus('success')
       setPreviewQuestions([])
       await loadQuestions(selectedSetId)
+      // Question counts are stored on the set document, so refresh the set
+      // list as well as the questions shown below.
+      await loadSets()
 
       setTimeout(() => {
         setUploadStatus('idle')

@@ -42,16 +42,18 @@ export function parseQuestionsFromText(text) {
 
     const normalizedText = cleanedText
       .replace(/<PARSED TEXT FOR PAGE:[\s\S]*?>/gi, '\n')
-      // PDFs repeat this header on every page; remove it before attaching notes
-      // to their matching answers. Match the shared course-code/header structure
-      // instead of a particular prefix (for example, PED8 or GED8).
-      .replace(/\b[A-Z][A-Z0-9_-]*\d[A-Z0-9_-]*\s+POSTTEST\s*\|[^\n]*?\|\s*QUESTIONS\s+\d+\s*[-–]\s*\d+/gi, '\n')
+      // PDFs repeat an all-caps header on every page. Match its stable three-part
+      // structure (title | subject | questions n-n) rather than a particular
+      // course code or test label, while leaving ordinary all-caps content alone.
+      .replace(/\b[A-Z][A-Z0-9 _-]*?\|\s*[A-Z0-9 ,&'’()_-]+\|\s*QUESTIONS\s+\d+\s*[-–]\s*\d+/g, '\n')
       .replace(/\bPage\s+\d+\b/gi, '\n')
 
     const questions = []
 
     const qaPairs = []
-    const qaRegex = /(?:^|\n)\s*Answer\s*:\s*([A-D])\s*(?:\n|\s)+Notes?\s*:\s*([\s\S]*?)(?=(?:\n\s*Answer\s*:|\n\s*\d{1,3}\.\s|<PARSED TEXT FOR PAGE:|$))/gi
+    // Some PDFs put a copy of the answer text after the letter (for example,
+    // "Answer: A. The correct choice") before Notes. Accept either layout.
+    const qaRegex = /(?:^|\n)\s*Answer\s*:\s*([A-D])(?:\.\s*[\s\S]*?)?\s*\n\s*Notes?\s*:\s*([\s\S]*?)(?=(?:\n\s*Answer\s*:|\n\s*\d{1,3}\.\s|<PARSED TEXT FOR PAGE:|$))/gi
     let qaMatch = qaRegex.exec(normalizedText)
     while (qaMatch) {
       qaPairs.push({
