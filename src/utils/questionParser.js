@@ -50,23 +50,12 @@ export function parseQuestionsFromText(text) {
 
     const questions = []
 
-    const qaPairs = []
-    // Some PDFs put a copy of the answer text after the letter (for example,
-    // "Answer: A. The correct choice") before Notes. Accept either layout.
-    const qaRegex = /(?:^|\n)\s*Answer\s*:\s*([A-D])(?:\.\s*[\s\S]*?)?\s*\n\s*Notes?\s*:\s*([\s\S]*?)(?=(?:\n\s*Answer\s*:|\n\s*\d{1,3}\.\s|<PARSED TEXT FOR PAGE:|$))/gi
-    let qaMatch = qaRegex.exec(normalizedText)
-    while (qaMatch) {
-      qaPairs.push({
-        answer: qaMatch[1].toUpperCase(),
-        notes: qaMatch[2].replace(/\s+/g, ' ').trim(),
-      })
-      qaMatch = qaRegex.exec(normalizedText)
-    }
-
-    // Question numbers are printed at the beginning of a PDF line. Restricting
-    // matches to line starts avoids splitting on numbers used in the question
-    // text or answer choices (for example, "range of 40.").
-    const questionRegex = /(?:^|\n)\s*(\d{1,3})\.\s*([\s\S]*?)(?=(?:\n\s*\d{1,3}\.\s|\n\s*Answer\s*:|$))/g
+    // Question numbers are printed at the beginning of a PDF line. Keep the
+    // answer and optional notes in the same block as their question, so PDFs
+    // with no Notes section use exactly the same parsing path as PDFs with one.
+    // Restricting matches to line starts avoids splitting on values such as
+    // "range of 40." in question text or answer choices.
+    const questionRegex = /(?:^|\n)\s*(\d{1,3})\.\s*([\s\S]*?)(?=(?:\n\s*\d{1,3}\.\s|$))/g
     let questionMatch = questionRegex.exec(normalizedText)
 
     const getOption = (letter, block) => {
@@ -79,7 +68,11 @@ export function parseQuestionsFromText(text) {
       const parsedNumber = Number.parseInt(questionMatch[1], 10)
       const block = questionMatch[2].trim()
 
-      // Remove trailing answer or notes text if OCR merged sections.
+      const answerMatch = block.match(/(?:^|\n)\s*Answer\s*:\s*([A-D])\b/i)
+      const notesMatch = block.match(/(?:^|\n)\s*Notes?\s*:\s*([\s\S]*?)\s*$/i)
+
+      // Remove trailing answer and notes text before parsing the question and
+      // choices. Notes are optional, so their absence never rejects a question.
       const safeBlock = block.split(/\bAnswer\s*:/i)[0].trim()
 
       const questionTextMatch = safeBlock.match(/^([\s\S]*?)(?=\n\s*A\.\s|$)/i)
@@ -95,9 +88,8 @@ export function parseQuestionsFromText(text) {
         letterD: getOption('D', safeBlock),
       }
 
-      const mappedQA = qaPairs[questions.length]
-      question.correctAnswer = mappedQA?.answer || 'A'
-      question.notes = mappedQA?.notes || ''
+      question.correctAnswer = answerMatch?.[1]?.toUpperCase() || 'A'
+      question.notes = notesMatch?.[1]?.replace(/\s+/g, ' ').trim() || ''
 
       console.log(`\n🔍 Processing block for #${question.questionNumber}: "${safeBlock.substring(0, 120)}..."`)
       console.log(`✅ Question: "${question.question}"`)

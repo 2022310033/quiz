@@ -467,8 +467,122 @@ input[type="number"].input {
   margin-top: 1rem;
 }
 
+.exam-layout {
+  position: relative;
+  z-index: 0;
+}
+
+.exam-stage {
+  padding-bottom: 1rem;
+}
+
+.exam-stage .exam-card {
+  min-width: 0;
+}
+
 .exam-card {
   animation: slideIn 0.4s ease;
+}
+
+.high-yield-note {
+  width: 280px;
+  height: auto;
+  max-height: none;
+  position: fixed;
+  top: 7rem;
+  right: 1rem;
+  padding: 0.95rem;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  box-shadow: 0 8px 20px rgba(120, 53, 15, 0.12);
+  text-align: left;
+  overflow: visible;
+  z-index: 9999;
+}
+
+.high-yield-note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.high-yield-note h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #92400e;
+}
+
+.high-yield-note-toggle {
+  display: none;
+  place-items: center;
+  border: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #92400e;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.high-yield-note-content {
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #451a03;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 1024px) {
+  .high-yield-note {
+    width: 220px;
+    top: 5.5rem;
+    right: 0.75rem;
+  }
+
+  .high-yield-note-toggle {
+    display: inline-grid;
+  }
+
+  .high-yield-note-collapsed {
+    width: 3.9rem;
+    padding: 0.5rem;
+    border-radius: 999px;
+  }
+
+  .high-yield-note-collapsed .high-yield-note-header {
+    margin-bottom: 0;
+  }
+
+  .high-yield-note-collapsed h4 {
+    display: none;
+  }
+
+  .high-yield-note-collapsed .high-yield-note-content {
+    display: none;
+  }
+
+  .high-yield-note-collapsed .high-yield-note-toggle {
+    width: 2.9rem;
+    height: 2.9rem;
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .high-yield-note {
+    width: 170px;
+    right: 0.5rem;
+  }
 }
 
 @keyframes slideIn {
@@ -514,6 +628,7 @@ input[type="number"].input {
   color: #0f172a;
   margin: 1rem 0 1.5rem 0;
 }
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;
