@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import {
   getAllFolders,
@@ -27,6 +28,8 @@ function Exam() {
   const [questions, setQuestions] = useState([])
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
+  const [loadedSetId, setLoadedSetId] = useState(null)
+  const questionLoadRequestRef = useRef(0)
 
   // Sets management
   const [sets, setSets] = useState([])
@@ -52,6 +55,7 @@ function Exam() {
   const [timePerQuestion, setTimePerQuestion] = useState(30)
   const [running, setRunning] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
+  const [highYieldCollapsed, setHighYieldCollapsed] = useState(false)
 
   const [saveStatus, setSaveStatus] = useState('')
 
@@ -94,6 +98,32 @@ function Exam() {
     () => shuffledAnswers.find((choice) => choice.isCorrect)?.displayLetter ?? currentQuestion?.correctAnswer ?? '',
     [shuffledAnswers, currentQuestion],
   )
+
+  const parsedNotes = useMemo(() => {
+    const rawNotes = currentQuestion?.notes?.trim() ?? ''
+
+    // A High Yield heading separates an optional priority note from the regular
+    // explanation. Support common forms such as "High Yield:", "High-Yield",
+    // and "LET High-Yield".
+    const markerMatch = /\b(?:let\s+)?high[\s-]*yield\b\s*[:\-–—]?\s*/i.exec(rawNotes)
+    if (!markerMatch) {
+      return {
+        regular: rawNotes,
+        highYield: '',
+      }
+    }
+
+    const markerStart = markerMatch.index
+    const markerEnd = markerStart + markerMatch[0].length
+    return {
+      regular: rawNotes.slice(0, markerStart).replace(/[\s:\-–—]+$/, '').trim(),
+      highYield: rawNotes.slice(markerEnd).trim(),
+    }
+  }, [currentQuestion?.notes])
+
+  useEffect(() => {
+    setHighYieldCollapsed(false)
+  }, [currentQuestion?.id])
 
   const loadSets = async () => {
     setSetsLoading(true)
@@ -287,15 +317,23 @@ function Exam() {
   const loadQuestionsForSet = async (setId) => {
     if (!setId) return
 
+    const requestId = ++questionLoadRequestRef.current
     setStatus('loading')
     setError('')
+    setLoadedSetId(null)
+    setQuestions([])
 
     try {
       const items = await getQuestionsBySet(setId)
+      if (requestId !== questionLoadRequestRef.current) return
+
       const shuffled = items.sort(() => Math.random() - 0.5)
       setQuestions(shuffled)
+      setLoadedSetId(setId)
       setStatus('success')
     } catch (err) {
+      if (requestId !== questionLoadRequestRef.current) return
+
       setError(err instanceof Error ? err.message : 'Failed to load questions.')
       setStatus('error')
     }
@@ -303,9 +341,11 @@ function Exam() {
 
   useEffect(() => {
     if (!selectedSetId) {
+      questionLoadRequestRef.current += 1
       setQuestions([])
       setStatus('idle')
       setError('')
+      setLoadedSetId(null)
       setReviewMode(false)
       return
     }
@@ -333,7 +373,7 @@ function Exam() {
   }, [running, secondsLeft])
 
   const startExam = () => {
-    if (questions.length === 0) return
+    if (status !== 'success' || loadedSetId !== selectedSetId || questions.length === 0) return
     setHasStarted(true)
     setCurrentIndex(0)
     setScore(0)
@@ -508,7 +548,7 @@ return (
         <p>No questions in this set. Add some in the Quiz page.</p>
       )}
 
-      {status === 'success' && questions.length > 0 && !hasStarted && selectedSetId && (
+      {status === 'success' && loadedSetId === selectedSetId && questions.length > 0 && !hasStarted && selectedSetId && (
         <div className="exam-setup" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
           <label className="form-label" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
             Seconds per question:
@@ -537,8 +577,10 @@ return (
       )}
 
       {currentQuestion && !completed && hasStarted && (
-        <div style={{ position: 'relative', paddingBottom: '1rem' }}>
-          <div className="exam-card">
+        <>
+          <div className="exam-layout">
+          <div className="exam-stage">
+            <div className="exam-card">
             <p className="exam-meta">
               Question {currentIndex + 1} of {questions.length}
             </p>
@@ -604,7 +646,9 @@ return (
                   >
                     <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem' }}>Notes</h4>
                     <div style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
-                      {currentQuestion.notes ? currentQuestion.notes : 'No notes available for this question.'}
+                      {parsedNotes.regular || (parsedNotes.highYield
+                        ? 'High Yield note is shown above.'
+                        : 'No notes available for this question.')}
                     </div>
                   </div>
                 )}
@@ -614,8 +658,31 @@ return (
                 </button>
               </div>
             )}
+            </div>
           </div>
-        </div>
+          </div>
+          {questionAnswered && showNotes && parsedNotes.highYield && createPortal(
+            <aside
+              className={`high-yield-note${highYieldCollapsed ? ' high-yield-note-collapsed' : ''}`}
+              aria-label="High Yield note"
+            >
+              <div className="high-yield-note-header">
+                <h4>High Yield</h4>
+                <button
+                  type="button"
+                  className="high-yield-note-toggle"
+                  onClick={() => setHighYieldCollapsed((collapsed) => !collapsed)}
+                  aria-expanded={!highYieldCollapsed}
+                  aria-label={highYieldCollapsed ? 'Show High Yield note' : 'Hide High Yield note'}
+                >
+                  {highYieldCollapsed ? '!' : '×'}
+                </button>
+              </div>
+              <div className="high-yield-note-content">{parsedNotes.highYield}</div>
+            </aside>,
+            document.body,
+          )}
+        </>
       )}
 
       {completed && (
