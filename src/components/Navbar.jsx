@@ -11,7 +11,7 @@ function Navbar() {
         <li><NavLink to="/sets">Sets</NavLink></li>
         <li><NavLink to="/feed">Feed</NavLink></li>
         <li><NavLink to="/history">History</NavLink></li>
-        <li><NavLink to="/about">Store</NavLink></li>
+        <li><NavLink to="/gemini">Store</NavLink></li>
       </ul>
     </nav>
   )
