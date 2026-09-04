@@ -71,9 +71,12 @@ Use exactly four plausible choices and one unambiguous correct answer per questi
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`
 
       for (let attempt = 0; attempt <= maxRetriesPerModel; attempt += 1) {
-        const response = await fetch(`${apiUrl}?key=${encodeURIComponent(getApiKey())}`, {
+        const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': getApiKey(),
+          },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
