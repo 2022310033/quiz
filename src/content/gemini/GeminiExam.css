@@ -1,0 +1,179 @@
+.gemini-page {
+  max-width: 760px;
+  margin: 0 auto;
+  background: linear-gradient(145deg, #fff7ed 0%, #ffffff 48%, #f5f3ff 100%);
+}
+
+.gemini-back-button {
+  margin-bottom: 2rem;
+}
+
+.gemini-heading {
+  max-width: 620px;
+  margin-bottom: 2rem;
+}
+
+.gemini-eyebrow {
+  margin: 0 0 0.75rem;
+  color: #7c3aed;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.gemini-heading h1 {
+  margin: 0;
+  color: #1f2937;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 1.05;
+}
+
+.gemini-heading > p:last-child {
+  margin: 1rem 0 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.gemini-form {
+  display: grid;
+  gap: 0.7rem;
+  max-width: 620px;
+  padding: 1.5rem;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 45px rgba(124, 58, 237, 0.1);
+}
+
+.gemini-form label {
+  margin-top: 0.65rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.gemini-form label span {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.gemini-form input,
+.gemini-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.85rem 0.95rem;
+  color: #1e293b;
+  background: #fff;
+  font: inherit;
+}
+
+.gemini-form textarea {
+  resize: vertical;
+}
+
+.gemini-form input:focus,
+.gemini-form textarea:focus {
+  outline: 2px solid rgba(124, 58, 237, 0.25);
+  border-color: #7c3aed;
+}
+
+.gemini-error {
+  margin: 0.6rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #dc2626;
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.gemini-submit {
+  margin-top: 0.8rem;
+}
+
+.gemini-submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.gemini-quiz-page {
+  max-width: 860px;
+}
+
+.gemini-quiz-page h1 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.gemini-question-count,
+.gemini-score {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.gemini-question-card {
+  margin-top: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(124, 58, 237, 0.1);
+}
+
+.gemini-question-card h2 {
+  margin: 0 0 1.5rem;
+  color: #1e293b;
+  line-height: 1.35;
+}
+
+.gemini-options {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.gemini-option {
+  padding: 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gemini-option:hover:not(:disabled) {
+  border-color: #7c3aed;
+  background: #faf5ff;
+}
+
+.gemini-option:disabled {
+  cursor: default;
+}
+
+.gemini-option.is-correct {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.gemini-option.is-wrong {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.gemini-feedback {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 6px;
+  color: #334155;
+  background: #f8fafc;
+}
+
+.gemini-feedback p {
+  margin: 0 0 0.75rem;
+}
+
+.gemini-quiz-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}

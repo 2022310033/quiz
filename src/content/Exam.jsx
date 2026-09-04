@@ -438,7 +438,6 @@ function Exam() {
 
   // Save exam history when the exam is completed
   const handleFinishExam = async () => {
-    
     const examData = {
       setId: selectedSetId,
       setName: currentSet?.name || 'Untitled Exam',
